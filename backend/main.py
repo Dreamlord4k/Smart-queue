@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.routes.auth import router as auth_router
+from backend.routes.groups import router as groups_router
 from backend.routes.queue import router as queue_router
 from backend.routes.sessions import router as sessions_router
 
@@ -23,6 +24,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(auth_router)
+app.include_router(groups_router)
 app.include_router(queue_router)
 app.include_router(sessions_router)
 
