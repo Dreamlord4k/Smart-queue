@@ -1,0 +1,122 @@
+/* Единая Material You-тема фронта: CSS-переменные палитры, радиусы,
+   тени и шрифт-стек. Значения зафиксированы дизайн-решением:
+   фон #F2F6FC, поверхности белые, primary #2F7CF6, текст #0B1B33,
+   коралл #FF6B5E — только акценты. Без внешних CDN. */
+
+:root {
+  --color-bg: #f2f6fc;
+  --color-surface: #ffffff;
+  --color-primary: #2f7cf6;
+  --color-primary-soft: #e7f0ff;
+  --color-primary-deep: #174477;
+  --color-ink: #0b1b33;
+  --color-muted: #64748b;
+  --color-faint: #53657f;
+  --color-border: #d7e0ec;
+  --color-field: #f4f7fb;
+  --color-accent: #ff6b5e;
+  --color-danger: #d94b40;
+  --color-danger-soft: #fff0ee;
+  --color-danger-ink: #a9342b;
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+
+  --shadow-card: 0 8px 28px rgba(11, 27, 51, 0.07);
+  --shadow-soft: 0 3px 14px rgba(11, 27, 51, 0.05);
+  --shadow-lifted:
+    0 12px 32px rgba(11, 27, 51, 0.08),
+    0 2px 6px rgba(11, 27, 51, 0.06);
+
+  --font-stack:
+    -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Студенческие очереди («Мои очереди»). */
+
+.mq-page {
+  box-sizing: border-box;
+  min-height: 100dvh;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: var(--font-stack);
+  color: var(--color-ink);
+  background: var(--color-bg);
+}
+
+.mq-page h1 {
+  margin: 0 0 16px;
+  font-size: 26px;
+  line-height: 1.2;
+}
+
+.mq-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.mq-card {
+  padding: 18px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.mq-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.mq-card p {
+  margin: 6px 0;
+}
+
+.mq-warn {
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--color-primary-deep);
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-md);
+}
+
+.mq-error {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--color-danger-ink);
+  background: var(--color-danger-soft);
+  border-radius: 14px;
+}
+
+.mq-button {
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--color-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(47, 124, 246, 0.3);
+  transition:
+    transform 130ms ease,
+    background-color 150ms ease;
+}
+
+.mq-button:hover {
+  background: #2570e8;
+}
+
+.mq-button:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mq-button {
+    transition: none;
+  }
+}

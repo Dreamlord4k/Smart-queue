@@ -1,19 +1,20 @@
+@import "../../theme.css";
+
 :root {
-  color: #0b1b33;
-  background: #f2f6fc;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", sans-serif;
+  color: var(--color-ink);
+  background: var(--color-bg);
+  font-family: var(--font-stack);
 }
 
 body {
   margin: 0;
-  background: #f2f6fc;
+  background: var(--color-bg);
 }
 
 .teacher-page {
   min-height: 100vh;
   padding: 32px clamp(16px, 4vw, 56px) 56px;
-  color: #0b1b33;
+  color: var(--color-ink);
 }
 
 .teacher-shell {
@@ -34,7 +35,7 @@ body {
 
 .teacher-eyebrow {
   margin: 0 0 5px;
-  color: #2f7cf6;
+  color: var(--color-primary);
   font-weight: 800;
 }
 
@@ -44,13 +45,13 @@ body {
 }
 
 .teacher-muted {
-  color: #64748b;
+  color: var(--color-muted);
 }
 
 .teacher-button {
   padding: 10px 16px;
   color: #174477;
-  background: #e7f0ff;
+  background: var(--color-primary-soft);
   border: 0;
   border-radius: 14px;
   font: inherit;
@@ -60,12 +61,12 @@ body {
 
 .teacher-button--primary {
   color: #fff;
-  background: #2f7cf6;
+  background: var(--color-primary);
 }
 
 .teacher-button--danger {
   color: #fff;
-  background: #d94b40;
+  background: var(--color-danger);
 }
 
 .teacher-button:disabled {
@@ -77,9 +78,9 @@ body {
 .teacher-card,
 .teacher-channel,
 .teacher-report {
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 8px 28px rgba(11, 27, 51, 0.07);
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
 }
 
 .teacher-panel {
@@ -113,7 +114,7 @@ body {
   padding: 5px 10px;
   border-radius: 999px;
   color: #24558b;
-  background: #e7f0ff;
+  background: var(--color-primary-soft);
   font-size: 13px;
   font-weight: 750;
 }
@@ -139,18 +140,18 @@ body {
   width: 100%;
   box-sizing: border-box;
   padding: 11px 13px;
-  color: #0b1b33;
-  background: #f4f7fb;
-  border: 1px solid #d7e0ec;
-  border-radius: 12px;
+  color: var(--color-ink);
+  background: var(--color-field);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font: inherit;
 }
 
 .teacher-form fieldset {
   margin: 18px 0;
   padding: 14px;
-  border: 1px solid #d7e0ec;
-  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
 }
 
 .teacher-checks {
@@ -173,16 +174,16 @@ body {
 
 .teacher-list li {
   padding: 13px 15px;
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 15px;
-  box-shadow: 0 3px 14px rgba(11, 27, 51, 0.05);
+  box-shadow: var(--shadow-soft);
 }
 
 .teacher-reasons {
   display: grid;
   gap: 4px;
   margin-top: 8px;
-  color: #53657f;
+  color: var(--color-faint);
   font-size: 14px;
 }
 
@@ -202,8 +203,8 @@ body {
 
 .teacher-error {
   padding: 12px 15px;
-  color: #a9342b;
-  background: #fff0ee;
+  color: var(--color-danger-ink);
+  background: var(--color-danger-soft);
   border-radius: 14px;
 }
 
