@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { decodeRoleFromToken, Login, loginUser, saveTokens } from "./Login";
-import { Register, registerUser } from "./Register";
+import { decodeRoleFromToken, Login, loginUser, saveTokens, validateLoginInput } from "./Login";
+import { Register, registerUser, validateRegisterInput } from "./Register";
+import { emitAuthRoute } from "./AuthTabs";
 
 function fakeJwt(role: string): string {
   const payload = btoa(JSON.stringify({ sub: "user-id", role }))
@@ -143,5 +144,104 @@ describe("формы входа и регистрации", () => {
     expect(html).toContain('name="role"');
     expect(html).toContain('name="group_id"');
     expect(html).toContain("Зарегистрироваться");
+  });
+
+  it("формы в стиле Material You: логотип и коралловая кнопка", () => {
+    const html = renderToStaticMarkup(
+      <>
+        <Login apiBaseUrl="" />
+        <Register apiBaseUrl="" />
+      </>,
+    );
+
+    expect(html.match(/Умная очередь/g)).toHaveLength(2);
+    expect(html).toContain("auth-submit");
+  });
+
+  it("карточка выше центра, логотип крупный", () => {
+    const html = renderToStaticMarkup(<Login apiBaseUrl="" />);
+
+    expect(html).toContain("auth-card");
+    expect(html).toContain("auth-logo");
+  });
+});
+
+describe("переключатель Вход/Регистрация", () => {
+  it("подсвечивает активную вкладку входа", () => {
+    const html = renderToStaticMarkup(<Login apiBaseUrl="" />);
+
+    expect(html).toContain("auth-tabs");
+    expect(html.match(/auth-tab--active/g)).toHaveLength(1);
+    expect(html).toContain('auth-tab--active" aria-pressed="true">Вход<');
+  });
+
+  it("подсвечивает активную вкладку регистрации", () => {
+    const html = renderToStaticMarkup(<Register apiBaseUrl="" />);
+
+    expect(html.match(/auth-tab--active/g)).toHaveLength(1);
+    expect(html).toContain('auth-tab--active" aria-pressed="true">Регистрация<');
+  });
+
+  it("клик шлёт событие навигации без смены пропсов", () => {
+    const seen: unknown[] = [];
+    const holder = globalThis as { window?: unknown };
+    const previous = holder.window;
+    holder.window = {
+      dispatchEvent: (event: Event) => {
+        seen.push((event as CustomEvent).detail);
+        return true;
+      },
+    };
+    try {
+      emitAuthRoute("/register");
+    } finally {
+      if (previous === undefined) {
+        delete holder.window;
+      } else {
+        holder.window = previous;
+      }
+    }
+
+    expect(seen).toEqual(["/register"]);
+  });
+});
+
+describe("валидация после нажатия", () => {
+  it("login: email без @ и пустой пароль дают подсказки", () => {
+    expect(validateLoginInput({ email: "userexample.com", password: "secret" })).toEqual({
+      email: "В email не хватает @ — проверьте адрес",
+    });
+    expect(validateLoginInput({ email: "", password: "" })).toEqual({
+      email: "Введите email",
+      password: "Введите пароль",
+    });
+    expect(validateLoginInput({ email: "a@b.c", password: "secret" })).toEqual({});
+  });
+
+  it("register: пустые поля и короткий пароль дают подсказки", () => {
+    expect(
+      validateRegisterInput({ email: "a@b.c", fullName: "", password: "123", role: "teacher" }),
+    ).toEqual({
+      fullName: "Представьтесь — введите ФИО",
+      password: "Пароль короткий — минимум 8 символов",
+    });
+    expect(
+      validateRegisterInput({
+        email: "a@b.c",
+        fullName: "Студент",
+        password: "password1",
+        role: "student",
+        groupId: "",
+      }),
+    ).toEqual({ groupId: "Укажите ID группы" });
+    expect(
+      validateRegisterInput({
+        email: "a@b.c",
+        fullName: "Студент",
+        password: "password1",
+        role: "student",
+        groupId: "g",
+      }),
+    ).toEqual({});
   });
 });

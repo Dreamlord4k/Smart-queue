@@ -1,0 +1,204 @@
+/* Формы входа и регистрации в стиле Material You (светлая тема).
+   Палитра: фон #F2F6FC, поверхности белые, primary #2F7CF6,
+   текст #0B1B33, коралл #FF6B5E — только submit, ошибки и фокус-подчерк.
+   Системный шрифт как на Pixel, без внешних CDN. */
+
+.auth-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 16px;
+  background: #f2f6fc;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+  color: #0b1b33;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 13vh;
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 32px 28px 28px;
+  box-shadow:
+    0 12px 32px rgba(11, 27, 51, 0.08),
+    0 2px 6px rgba(11, 27, 51, 0.06);
+}
+
+@media (max-width: 640px) {
+  .auth-card {
+    margin-top: 6vh;
+    padding: 26px 20px 22px;
+  }
+}
+
+.auth-logo {
+  margin: 0 0 14px;
+  font-size: 31px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #2f7cf6;
+}
+
+.auth-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.auth-subtitle {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #5a6b87;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 20px;
+  padding: 4px;
+  background: #e8eff9;
+  border-radius: 18px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2f7cf6;
+  background: transparent;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition:
+    transform 130ms ease,
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.auth-tab:active {
+  transform: scale(0.97);
+}
+
+.auth-tab--active {
+  color: #ffffff;
+  background: #2f7cf6;
+  box-shadow: 0 4px 12px rgba(47, 124, 246, 0.35);
+}
+
+.auth-field {
+  display: block;
+  margin: 0 0 14px;
+}
+
+.auth-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auth-input,
+.auth-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 15px;
+  font: inherit;
+  font-size: 16px;
+  color: #0b1b33;
+  background: #f2f6fc;
+  border: 2px solid transparent;
+  border-radius: 16px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.auth-input::placeholder {
+  color: #8ba0bd;
+}
+
+.auth-input:focus,
+.auth-select:focus {
+  outline: none;
+  background: #ffffff;
+  border-color: #2f7cf6;
+  box-shadow:
+    inset 0 -2px 0 #ff6b5e,
+    0 0 0 3px rgba(47, 124, 246, 0.16);
+}
+
+.auth-input--invalid {
+  background: #fff4f2;
+  border-color: #ffb3ab;
+}
+
+.auth-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #ff6b5e;
+}
+
+.auth-error {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #c74336;
+  background: #fff1ef;
+  border: 1px solid #ffd9d4;
+  border-radius: 14px;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 6px;
+  padding: 15px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #ff6b5e;
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(255, 107, 94, 0.35);
+  transition:
+    transform 130ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: #f25a4d;
+}
+
+.auth-submit:active:not(:disabled) {
+  transform: scale(0.97);
+  box-shadow: 0 4px 12px rgba(255, 107, 94, 0.3);
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-input,
+  .auth-select,
+  .auth-submit,
+  .auth-tab {
+    transition: none;
+  }
+}
