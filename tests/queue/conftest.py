@@ -4,12 +4,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
-from auth.dependencies import SessionLocal
-from main import app
-from models.group import Group
-from models.queue_entry import QueueEntry
-from models.session import Session
-from models.user import User
+from backend.auth.dependencies import SessionLocal
+from backend.main import app
+from backend.models.group import Group
+from backend.models.queue_entry import QueueEntry
+from backend.models.session import Session
+from backend.models.user import User
 
 
 @pytest.fixture(autouse=True)

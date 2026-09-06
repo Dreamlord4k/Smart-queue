@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DatabaseSession
 
-from auth.dependencies import get_current_user, get_db, require_role
-from models.queue_entry import QueueEntry, QueueEntryStatus
-from models.session import Session, SessionStatus
-from models.user import User, UserRole
+from backend.auth.dependencies import get_current_user, get_db, require_role
+from backend.models.queue_entry import QueueEntry, QueueEntryStatus
+from backend.models.session import Session, SessionStatus
+from backend.models.user import User, UserRole
 from backend.queue.eta import (
     ACTIVE_STATUSES,
     calculate_eta_ranges,

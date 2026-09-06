@@ -2,7 +2,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
-from models.user import UserRole
+from backend.models.user import UserRole
 
 
 class RegisterRequest(BaseModel):

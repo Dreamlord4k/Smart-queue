@@ -1,15 +1,23 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routes.auth import router as auth_router
-from routes.queue import router as queue_router
-from routes.sessions import router as sessions_router
+from backend.routes.auth import router as auth_router
+from backend.routes.queue import router as queue_router
+from backend.routes.sessions import router as sessions_router
+
+
+def _cors_origins() -> list[str]:
+    raw_origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173")
+    origins = [origin.strip() for origin in raw_origins.split(",") if origin.strip()]
+    return origins or ["http://localhost:5173"]
 
 
 app = FastAPI(title="Smart Queue API")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

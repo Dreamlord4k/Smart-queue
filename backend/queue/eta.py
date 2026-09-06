@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from models.queue_entry import QueueEntry, QueueEntryStatus
-from models.session import Session, SessionStatus
+from backend.models.queue_entry import QueueEntry, QueueEntryStatus
+from backend.models.session import Session, SessionStatus
 
 
 ACTIVE_STATUSES = (QueueEntryStatus.WAITING, QueueEntryStatus.CALLED)

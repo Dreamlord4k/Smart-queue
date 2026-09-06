@@ -15,11 +15,10 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: ./backend
     environment:
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       DB_URL: ${DB_URL:-postgresql+psycopg://smart_queue:smart_queue@postgres:5432/smart_queue}
-      PYTHONPATH: /workspace:/workspace/backend
       JWT_SECRET: ${JWT_SECRET:-development-only-change-me-use-32-bytes}
       JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
       JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}

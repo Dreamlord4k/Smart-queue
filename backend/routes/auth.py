@@ -5,8 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from auth.dependencies import get_current_user, get_db
-from auth.schemas import (
+from backend.auth.dependencies import get_current_user, get_db
+from backend.auth.schemas import (
     AccessTokenResponse,
     LoginRequest,
     RefreshRequest,
@@ -14,7 +14,7 @@ from auth.schemas import (
     TokenPair,
     UserResponse,
 )
-from auth.security import (
+from backend.auth.security import (
     TokenError,
     create_access_token,
     create_refresh_token,
@@ -22,8 +22,8 @@ from auth.security import (
     hash_password,
     verify_password,
 )
-from models.group import Group
-from models.user import User, UserRole
+from backend.models.group import Group
+from backend.models.user import User, UserRole
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])

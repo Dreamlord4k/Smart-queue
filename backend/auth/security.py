@@ -7,8 +7,8 @@ from argon2.exceptions import InvalidHashError, VerificationError
 import jwt
 from jwt import InvalidTokenError
 
-from auth.config import settings
-from models.user import User
+from backend.auth.config import settings
+from backend.models.user import User
 
 
 _password_hasher = PasswordHasher()

@@ -2,10 +2,10 @@ from fastapi import Depends
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from auth.dependencies import SessionLocal, require_role
-from auth.security import decode_token
-from main import app
-from models.user import User, UserRole
+from backend.auth.dependencies import SessionLocal, require_role
+from backend.auth.security import decode_token
+from backend.main import app
+from backend.models.user import User, UserRole
 
 
 @app.get("/test/teacher-only")

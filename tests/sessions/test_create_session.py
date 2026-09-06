@@ -3,13 +3,13 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
-from auth.dependencies import SessionLocal
-from auth.security import create_access_token
-from models.group import Group
-from models.queue_entry import QueueEntry
-from models.session import Session, SessionStatus
-from models.user import User, UserRole
-from routes.sessions import CreateSessionRequest
+from backend.auth.dependencies import SessionLocal
+from backend.auth.security import create_access_token
+from backend.models.group import Group
+from backend.models.queue_entry import QueueEntry
+from backend.models.session import Session, SessionStatus
+from backend.models.user import User, UserRole
+from backend.routes.sessions import CreateSessionRequest
 
 
 def add_user(
