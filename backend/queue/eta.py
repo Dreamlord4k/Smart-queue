@@ -1,13 +1,36 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from math import sqrt
 from uuid import UUID
 
+from backend.config import EMA_ALPHA, ETA_RANGE_K
 from backend.models.queue_entry import QueueEntry, QueueEntryStatus
 from backend.models.session import Session, SessionStatus
 
 
 ACTIVE_STATUSES = (QueueEntryStatus.WAITING, QueueEntryStatus.CALLED)
+
+
+def update_ema(
+    previous_ema: float | None,
+    previous_variance: float,
+    real_time: float,
+    *,
+    alpha: float = EMA_ALPHA,
+) -> tuple[float, float]:
+    """Возвращает обновлённые EMA и экспоненциальную дисперсию в секундах."""
+    if real_time < 0:
+        raise ValueError("Фактическое время не может быть отрицательным")
+    if not 0 < alpha <= 1:
+        raise ValueError("Коэффициент EMA должен быть в диапазоне (0, 1]")
+    if previous_ema is None:
+        return real_time, 0.0
+
+    delta = real_time - previous_ema
+    ema_estimate = alpha * real_time + (1 - alpha) * previous_ema
+    variance = (1 - alpha) * (max(previous_variance, 0.0) + alpha * delta**2)
+    return ema_estimate, variance
 
 
 def normalize_active_positions(entries: list[QueueEntry]) -> list[QueueEntry]:
@@ -26,13 +49,15 @@ def calculate_eta_ranges(
     entries: list[QueueEntry],
     *,
     now: datetime | None = None,
+    ema_estimate: float | None = None,
+    variance: float = 0.0,
 ) -> dict[UUID, tuple[datetime, datetime]]:
     """Рассчитывает интервалы ETA из текущего состояния активной очереди."""
     current_time = now or datetime.now(timezone.utc)
-    service_time = timedelta(minutes=reception.duration_default)
     active_entries = sorted(entries, key=lambda entry: entry.position)
 
     if reception.status == SessionStatus.PLANNED:
+        service_time = timedelta(minutes=reception.duration_default)
         session_start = datetime.combine(
             reception.date, reception.start_time, tzinfo=timezone.utc
         )
@@ -44,6 +69,13 @@ def calculate_eta_ranges(
             for index, entry in enumerate(active_entries)
         }
 
+    service_seconds = (
+        ema_estimate
+        if ema_estimate is not None
+        else float(reception.duration_default * 60)
+    )
+    service_time = timedelta(seconds=max(service_seconds, 0.0))
+    uncertainty = timedelta(seconds=ETA_RANGE_K * sqrt(max(variance, 0.0)))
     channel_free_at = [current_time for _ in range(reception.capacity)]
     result: dict[UUID, tuple[datetime, datetime]] = {}
 
@@ -63,8 +95,10 @@ def calculate_eta_ranges(
             range(reception.capacity), key=lambda index: channel_free_at[index]
         )
         starts_at = channel_free_at[channel_index]
-        finishes_at = starts_at + service_time
-        result[entry.id] = (starts_at, finishes_at)
-        channel_free_at[channel_index] = finishes_at
+        result[entry.id] = (
+            max(current_time, starts_at - uncertainty),
+            starts_at + uncertainty,
+        )
+        channel_free_at[channel_index] = starts_at + service_time
 
     return result

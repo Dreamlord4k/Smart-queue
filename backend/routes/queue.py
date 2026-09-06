@@ -10,12 +10,14 @@ from sqlalchemy.orm import Session as DatabaseSession
 
 from backend.auth.dependencies import get_current_user, get_db, require_role
 from backend.models.queue_entry import QueueEntry, QueueEntryStatus
+from backend.models.service_stat import ServiceStat
 from backend.models.session import Session, SessionStatus
 from backend.models.user import User, UserRole
 from backend.queue.eta import (
     ACTIVE_STATUSES,
     calculate_eta_ranges,
     normalize_active_positions,
+    update_ema,
 )
 
 
@@ -53,6 +55,18 @@ class AbsenceResponse(BaseModel):
     active_queue: list[EtaQueueEntryResponse]
 
 
+class QueueTransitionResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    status: QueueEntryStatus
+    released_channel: int
+    next_entry_id: UUID | None
+    ema_estimate: float | None
+    variance: float | None
+    n_observations: int
+    active_queue: list[EtaQueueEntryResponse]
+
+
 class QueueStateEntryResponse(EtaQueueEntryResponse):
     student_name: str
     locked: bool
@@ -79,23 +93,32 @@ class MyQueueResponse(BaseModel):
     status: QueueEntryStatus
 
 
-def _active_entries(db: DatabaseSession, session_id: UUID) -> list[QueueEntry]:
-    return list(
-        db.scalars(
-            select(QueueEntry)
-            .where(
-                QueueEntry.session_id == session_id,
-                QueueEntry.status.in_(ACTIVE_STATUSES),
-            )
-            .order_by(QueueEntry.position, QueueEntry.created_at, QueueEntry.id)
-        ).all()
+def _active_entries(
+    db: DatabaseSession, session_id: UUID, *, lock: bool = False
+) -> list[QueueEntry]:
+    statement = (
+        select(QueueEntry)
+        .where(
+            QueueEntry.session_id == session_id,
+            QueueEntry.status.in_(ACTIVE_STATUSES),
+        )
+        .order_by(QueueEntry.position, QueueEntry.created_at, QueueEntry.id)
     )
+    if lock:
+        statement = statement.with_for_update()
+    return list(db.scalars(statement).all())
 
 
 def _eta_response(
-    reception: Session, entries: list[QueueEntry]
+    db: DatabaseSession, reception: Session, entries: list[QueueEntry]
 ) -> list[EtaQueueEntryResponse]:
-    eta_ranges = calculate_eta_ranges(reception, entries)
+    service_stat = db.get(ServiceStat, reception.id)
+    eta_ranges = calculate_eta_ranges(
+        reception,
+        entries,
+        ema_estimate=service_stat.ema_estimate if service_stat else None,
+        variance=service_stat.variance if service_stat else 0.0,
+    )
     return [
         EtaQueueEntryResponse(
             id=entry.id,
@@ -109,6 +132,187 @@ def _eta_response(
     ]
 
 
+def _lock_reception_and_entry(
+    db: DatabaseSession, entry_id: UUID
+) -> tuple[Session, QueueEntry]:
+    existing_entry = db.get(QueueEntry, entry_id)
+    if existing_entry is None:
+        raise HTTPException(status_code=404, detail="Запись очереди не найдена")
+
+    reception = db.scalar(
+        select(Session)
+        .where(Session.id == existing_entry.session_id)
+        .with_for_update()
+    )
+    if reception is None:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+
+    entry = db.scalar(
+        select(QueueEntry).where(QueueEntry.id == entry_id).with_for_update()
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Запись очереди не найдена")
+    return reception, entry
+
+
+def _call_next(
+    active_entries: list[QueueEntry], channel: int, called_at: datetime
+) -> QueueEntry | None:
+    next_entry = next(
+        (
+            candidate
+            for candidate in active_entries
+            if candidate.status == QueueEntryStatus.WAITING
+        ),
+        None,
+    )
+    if next_entry is not None:
+        next_entry.status = QueueEntryStatus.CALLED
+        next_entry.channel = channel
+        next_entry.called_at = called_at
+    return next_entry
+
+
+def _update_service_stat(
+    db: DatabaseSession,
+    reception: Session,
+    real_time: float,
+) -> ServiceStat:
+    service_stat = db.scalar(
+        select(ServiceStat)
+        .where(ServiceStat.session_id == reception.id)
+        .with_for_update()
+    )
+    previous_ema = service_stat.ema_estimate if service_stat else None
+    previous_variance = service_stat.variance if service_stat else 0.0
+    ema_estimate, variance = update_ema(
+        previous_ema, previous_variance, real_time
+    )
+    if service_stat is None:
+        service_stat = ServiceStat(
+            session_id=reception.id,
+            ema_estimate=ema_estimate,
+            variance=variance,
+            n_observations=1,
+        )
+        db.add(service_stat)
+    else:
+        service_stat.ema_estimate = ema_estimate
+        service_stat.variance = variance
+        service_stat.n_observations += 1
+    return service_stat
+
+
+def _transition_called_entry(
+    session_id: UUID,
+    entry_id: UUID,
+    target_status: QueueEntryStatus,
+    teacher: User,
+    db: DatabaseSession,
+) -> QueueTransitionResponse:
+    reception = db.scalar(
+        select(Session).where(Session.id == session_id).with_for_update()
+    )
+    if reception is None:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    if reception.teacher_id != teacher.id:
+        raise HTTPException(
+            status_code=403, detail="Управлять приёмом может только владелец сессии"
+        )
+    if reception.status != SessionStatus.ACTIVE:
+        raise HTTPException(
+            status_code=409, detail="Завершать приём можно только в активной сессии"
+        )
+
+    entry = db.scalar(
+        select(QueueEntry)
+        .where(
+            QueueEntry.id == entry_id,
+            QueueEntry.session_id == session_id,
+        )
+        .with_for_update()
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Запись очереди не найдена")
+    if entry.status != QueueEntryStatus.CALLED or entry.channel is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Завершить или пропустить можно только текущую запись канала",
+        )
+    if not 1 <= entry.channel <= reception.capacity:
+        raise HTTPException(status_code=409, detail="У записи некорректный канал")
+
+    now = datetime.now(timezone.utc)
+    released_channel = entry.channel
+    service_stat: ServiceStat | None = None
+    if target_status == QueueEntryStatus.DONE:
+        if entry.called_at is None:
+            raise HTTPException(
+                status_code=409, detail="У текущей записи отсутствует время вызова"
+            )
+        called_at = entry.called_at
+        if called_at.tzinfo is None:
+            called_at = called_at.replace(tzinfo=timezone.utc)
+        real_time = max((now - called_at).total_seconds(), 0.0)
+        entry.finished_at = now
+        service_stat = _update_service_stat(db, reception, real_time)
+
+    entry.status = target_status
+    entry.channel = None
+    db.flush()
+
+    active_entries = _active_entries(db, reception.id, lock=True)
+    normalize_active_positions(active_entries)
+    next_entry = _call_next(active_entries, released_channel, now)
+    db.flush()
+
+    if service_stat is None:
+        service_stat = db.get(ServiceStat, reception.id)
+    response = QueueTransitionResponse(
+        id=entry.id,
+        session_id=reception.id,
+        status=entry.status,
+        released_channel=released_channel,
+        next_entry_id=next_entry.id if next_entry else None,
+        ema_estimate=service_stat.ema_estimate if service_stat else None,
+        variance=service_stat.variance if service_stat else None,
+        n_observations=service_stat.n_observations if service_stat else 0,
+        active_queue=_eta_response(db, reception, active_entries),
+    )
+    db.commit()
+    return response
+
+
+@router.post(
+    "/sessions/{session_id}/queue/{entry_id}/done",
+    response_model=QueueTransitionResponse,
+)
+def finish_current(
+    session_id: UUID,
+    entry_id: UUID,
+    teacher: User = Depends(require_role(UserRole.TEACHER)),
+    db: DatabaseSession = Depends(get_db),
+) -> QueueTransitionResponse:
+    return _transition_called_entry(
+        session_id, entry_id, QueueEntryStatus.DONE, teacher, db
+    )
+
+
+@router.post(
+    "/sessions/{session_id}/queue/{entry_id}/skip",
+    response_model=QueueTransitionResponse,
+)
+def skip_current(
+    session_id: UUID,
+    entry_id: UUID,
+    teacher: User = Depends(require_role(UserRole.TEACHER)),
+    db: DatabaseSession = Depends(get_db),
+) -> QueueTransitionResponse:
+    return _transition_called_entry(
+        session_id, entry_id, QueueEntryStatus.SKIPPED, teacher, db
+    )
+
+
 @router.post(
     "/students/me/queues/{entry_id}/absence", response_model=AbsenceResponse
 )
@@ -118,19 +322,11 @@ def mark_absent(
     student: User = Depends(require_role(UserRole.STUDENT)),
     db: DatabaseSession = Depends(get_db),
 ) -> AbsenceResponse:
-    entry = db.scalar(
-        select(QueueEntry).where(QueueEntry.id == entry_id).with_for_update()
-    )
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Запись очереди не найдена")
+    reception, entry = _lock_reception_and_entry(db, entry_id)
     if entry.student_id != student.id:
         raise HTTPException(status_code=403, detail="Можно изменить только свою запись")
     if entry.status not in ACTIVE_STATUSES:
         raise HTTPException(status_code=409, detail="Запись уже не входит в активную очередь")
-
-    reception = db.get(Session, entry.session_id)
-    if reception is None:
-        raise HTTPException(status_code=404, detail="Сессия не найдена")
 
     released_channel = entry.channel if entry.status == QueueEntryStatus.CALLED else None
     entry.status = QueueEntryStatus.ABSENT
@@ -142,18 +338,7 @@ def mark_absent(
     normalize_active_positions(active_entries)
 
     if released_channel is not None:
-        next_entry = next(
-            (
-                candidate
-                for candidate in active_entries
-                if candidate.status == QueueEntryStatus.WAITING
-            ),
-            None,
-        )
-        if next_entry is not None:
-            next_entry.status = QueueEntryStatus.CALLED
-            next_entry.channel = released_channel
-            next_entry.called_at = datetime.now(timezone.utc)
+        _call_next(active_entries, released_channel, datetime.now(timezone.utc))
 
     db.commit()
     return AbsenceResponse(
@@ -161,7 +346,7 @@ def mark_absent(
         session_id=entry.session_id,
         status=entry.status,
         absence_reason=entry.absence_reason,
-        active_queue=_eta_response(reception, active_entries),
+        active_queue=_eta_response(db, reception, active_entries),
     )
 
 
@@ -186,7 +371,13 @@ def list_my_queues(
     cards: list[MyQueueResponse] = []
     for entry, reception, teacher in rows:
         active_entries = _active_entries(db, reception.id)
-        eta_range = calculate_eta_ranges(reception, active_entries).get(entry.id)
+        service_stat = db.get(ServiceStat, reception.id)
+        eta_range = calculate_eta_ranges(
+            reception,
+            active_entries,
+            ema_estimate=service_stat.ema_estimate if service_stat else None,
+            variance=service_stat.variance if service_stat else 0.0,
+        ).get(entry.id)
         cards.append(
             MyQueueResponse(
                 entry_id=entry.id,
@@ -235,7 +426,13 @@ def get_queue_state(
         .order_by(QueueEntry.position, QueueEntry.created_at, QueueEntry.id)
     ).all()
     active_entries = [entry for entry, _ in rows if entry.status in ACTIVE_STATUSES]
-    eta_ranges = calculate_eta_ranges(reception, active_entries)
+    service_stat = db.get(ServiceStat, reception.id)
+    eta_ranges = calculate_eta_ranges(
+        reception,
+        active_entries,
+        ema_estimate=service_stat.ema_estimate if service_stat else None,
+        variance=service_stat.variance if service_stat else 0.0,
+    )
     entries = [
         QueueStateEntryResponse(
             id=entry.id,

@@ -1,0 +1,2 @@
+EMA_ALPHA = 0.3
+ETA_RANGE_K = 1.0
