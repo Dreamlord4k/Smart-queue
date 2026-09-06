@@ -60,6 +60,11 @@ class SessionResponse(BaseModel):
     queue: list[QueueEntryResponse]
 
 
+class FreezeResponse(BaseModel):
+    id: UUID
+    frozen: bool
+
+
 def _load_participants(
     payload: CreateSessionRequest, db: DatabaseSession
 ) -> list[User]:
@@ -158,3 +163,23 @@ def create_session(
         created_at=reception.created_at,
         queue=[QueueEntryResponse.model_validate(entry) for entry in entries],
     )
+
+
+@router.post("/{session_id}/freeze", response_model=FreezeResponse)
+def freeze_session(
+    session_id: UUID,
+    teacher: User = Depends(require_role(UserRole.TEACHER)),
+    db: DatabaseSession = Depends(get_db),
+) -> FreezeResponse:
+    reception = db.get(Session, session_id)
+    if reception is None:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+    if reception.teacher_id != teacher.id:
+        raise HTTPException(
+            status_code=403, detail="Заморозить может только владелец сессии"
+        )
+    if not reception.frozen:
+        reception.frozen = True
+        db.commit()
+        db.refresh(reception)
+    return FreezeResponse(id=reception.id, frozen=reception.frozen)
