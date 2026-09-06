@@ -5,11 +5,11 @@ from datetime import date, time
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from auth.dependencies import SessionLocal
-from auth.security import create_access_token
-from models.queue_entry import QueueEntry, QueueEntryStatus
-from models.session import Session, SessionStatus
-from models.user import User, UserRole
+from backend.auth.dependencies import SessionLocal
+from backend.auth.security import create_access_token
+from backend.models.queue_entry import QueueEntry, QueueEntryStatus
+from backend.models.session import Session, SessionStatus
+from backend.models.user import User, UserRole
 
 
 def authorization(user: User) -> dict[str, str]:

@@ -9,10 +9,10 @@ from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum as SAEnum, Forei
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from models.group import Base
+from backend.models.group import Base
 
 if TYPE_CHECKING:
-    from models.session import Session
+    from backend.models.session import Session
 
 
 class QueueEntryStatus(str, Enum):

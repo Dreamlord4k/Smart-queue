@@ -9,10 +9,10 @@ from sqlalchemy import BigInteger, DateTime, Enum as SAEnum, ForeignKey, String,
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from models.group import Base
+from backend.models.group import Base
 
 if TYPE_CHECKING:
-    from models.group import Group
+    from backend.models.group import Group
 
 
 class UserRole(str, Enum):

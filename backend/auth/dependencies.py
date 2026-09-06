@@ -6,9 +6,9 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from auth.config import settings
-from auth.security import TokenError, decode_token
-from models.user import User, UserRole
+from backend.auth.config import settings
+from backend.auth.security import TokenError, decode_token
+from backend.models.user import User, UserRole
 
 
 engine = create_engine(settings.db_url, pool_pre_ping=True)
