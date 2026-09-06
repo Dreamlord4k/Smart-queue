@@ -1,21 +1,17 @@
 import { useState, type FormEvent } from "react";
 
+import {
+  browserTokenStorage,
+  decodeRoleFromToken,
+  saveTokens,
+  type TokenPair,
+  type UserRole,
+} from "../auth/session";
 import "./Auth.css";
 import { AuthTabs } from "./AuthTabs";
 
-export type UserRole = "student" | "teacher";
-
-export interface TokenPair {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-}
-
-export interface TokenStorage {
-  setItem(key: string, value: string): void;
-  getItem(key: string): string | null;
-  removeItem(key: string): void;
-}
+export { decodeRoleFromToken, saveTokens } from "../auth/session";
+export type { TokenPair, TokenStorage, UserRole } from "../auth/session";
 
 type FetchImpl = typeof fetch;
 
@@ -24,35 +20,6 @@ function resolveApiBaseUrl(explicit?: string): string {
     return explicit;
   }
   return (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
-}
-
-function defaultStorage(): TokenStorage | null {
-  if (typeof window !== "undefined" && window.localStorage) {
-    return window.localStorage;
-  }
-  return null;
-}
-
-export function decodeRoleFromToken(token: string): UserRole | null {
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) {
-      return null;
-    }
-    const decoded = JSON.parse(
-      atob(payload.replace(/-/g, "+").replace(/_/g, "/")),
-    ) as { role?: unknown };
-    return decoded.role === "student" || decoded.role === "teacher"
-      ? decoded.role
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveTokens(storage: TokenStorage, pair: TokenPair): void {
-  storage.setItem("access_token", pair.access_token);
-  storage.setItem("refresh_token", pair.refresh_token);
 }
 
 async function readErrorDetail(response: Response): Promise<string> {
@@ -132,7 +99,7 @@ export function Login({ apiBaseUrl, onSuccess }: LoginProps) {
     setPending(true);
     try {
       const pair = await loginUser({ email, password }, { apiBaseUrl });
-      const storage = defaultStorage();
+      const storage = browserTokenStorage();
       if (storage) {
         saveTokens(storage, pair);
       }

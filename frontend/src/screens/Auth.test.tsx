@@ -138,11 +138,17 @@ describe("формы входа и регистрации", () => {
   });
 
   it("Register показывает роль и поле группы для студента", () => {
-    const html = renderToStaticMarkup(<Register apiBaseUrl="" />);
+    const html = renderToStaticMarkup(
+      <Register
+        apiBaseUrl=""
+        initialGroups={[{ id: "group-1", name: "РИ-120001" }]}
+      />,
+    );
 
     expect(html).toContain("Регистрация");
     expect(html).toContain('name="role"');
     expect(html).toContain('name="group_id"');
+    expect(html).toContain("РИ-120001");
     expect(html).toContain("Зарегистрироваться");
   });
 
@@ -233,7 +239,7 @@ describe("валидация после нажатия", () => {
         role: "student",
         groupId: "",
       }),
-    ).toEqual({ groupId: "Укажите ID группы" });
+    ).toEqual({ groupId: "Выберите группу" });
     expect(
       validateRegisterInput({
         email: "a@b.c",

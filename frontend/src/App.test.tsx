@@ -43,6 +43,20 @@ describe("App", () => {
     );
 
     expect(html).toContain("Мои очереди");
+    expect(html).toContain("Настройки");
+  });
+
+  it("настройки доступны только в авторизованной части", () => {
+    const protectedHtml = renderToStaticMarkup(
+      <App initialRoute="/settings" readToken={() => fakeJwt("student")} />,
+    );
+    const anonymousHtml = renderToStaticMarkup(
+      <App initialRoute="/settings" readToken={() => null} />,
+    );
+
+    expect(protectedHtml).toContain("Удалить мой профиль");
+    expect(anonymousHtml).toContain("Вход");
+    expect(anonymousHtml).not.toContain("Удалить мой профиль");
   });
 
   it("на auth-роутах нет дублирующей шапки-навигации", () => {
