@@ -7,6 +7,7 @@ from backend.routes.auth import router as auth_router
 from backend.routes.groups import router as groups_router
 from backend.routes.queue import router as queue_router
 from backend.routes.sessions import router as sessions_router
+from backend.routes.ws import router as ws_router
 
 
 def _cors_origins() -> list[str]:
@@ -27,6 +28,7 @@ app.include_router(auth_router)
 app.include_router(groups_router)
 app.include_router(queue_router)
 app.include_router(sessions_router)
+app.include_router(ws_router)
 
 
 @app.get("/health")

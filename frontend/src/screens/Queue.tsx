@@ -10,6 +10,7 @@ import {
 import { createStudentApi, type StudentApi } from "../api/student";
 import { decodeSubjectFromToken } from "../auth/session";
 import "../components/student/Student.css";
+import { useQueueSocket } from "../hooks/useQueueSocket";
 import type {
   QueuePlacement,
   StudentQueueEntry,
@@ -136,6 +137,13 @@ export function Queue({
       setError(reason instanceof Error ? reason.message : "Не удалось загрузить очередь"),
     );
   }, [initialQueue, loadQueue]);
+
+  useQueueSocket({
+    sessionId,
+    accessToken,
+    apiBaseUrl,
+    onUpdate: loadQueue,
+  });
 
   const entries = queue?.entries ?? [];
   const ownEntry = entries.find((entry) => entry.student_id === currentStudentId) ?? null;
