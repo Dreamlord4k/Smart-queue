@@ -6,6 +6,7 @@ from sqlalchemy import engine_from_config, pool
 
 from backend.models.group import Base
 from backend.models.queue_entry import QueueEntry  # noqa: F401 — регистрирует таблицу
+from backend.models.service_stat import ServiceStat  # noqa: F401 — регистрирует таблицу
 from backend.models.session import Session  # noqa: F401 — регистрирует таблицу
 from backend.models.user import User  # noqa: F401 — регистрирует таблицу в metadata
 
