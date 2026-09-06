@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { decodeRoleFromToken, Login, loginUser, saveTokens } from "./Login";
-import { Register, registerUser } from "./Register";
+import { decodeRoleFromToken, Login, loginUser, saveTokens, validateLoginInput } from "./Login";
+import { Register, registerUser, validateRegisterInput } from "./Register";
 
 function fakeJwt(role: string): string {
   const payload = btoa(JSON.stringify({ sub: "user-id", role }))
@@ -143,5 +143,57 @@ describe("формы входа и регистрации", () => {
     expect(html).toContain('name="role"');
     expect(html).toContain('name="group_id"');
     expect(html).toContain("Зарегистрироваться");
+  });
+
+  it("формы в стиле Material You: логотип и коралловая кнопка", () => {
+    const html = renderToStaticMarkup(
+      <>
+        <Login apiBaseUrl="" />
+        <Register apiBaseUrl="" />
+      </>,
+    );
+
+    expect(html.match(/Умная очередь/g)).toHaveLength(2);
+    expect(html).toContain("auth-submit");
+  });
+});
+
+describe("валидация после нажатия", () => {
+  it("login: email без @ и пустой пароль дают подсказки", () => {
+    expect(validateLoginInput({ email: "userexample.com", password: "secret" })).toEqual({
+      email: "В email не хватает @ — проверьте адрес",
+    });
+    expect(validateLoginInput({ email: "", password: "" })).toEqual({
+      email: "Введите email",
+      password: "Введите пароль",
+    });
+    expect(validateLoginInput({ email: "a@b.c", password: "secret" })).toEqual({});
+  });
+
+  it("register: пустые поля и короткий пароль дают подсказки", () => {
+    expect(
+      validateRegisterInput({ email: "a@b.c", fullName: "", password: "123", role: "teacher" }),
+    ).toEqual({
+      fullName: "Представьтесь — введите ФИО",
+      password: "Пароль короткий — минимум 8 символов",
+    });
+    expect(
+      validateRegisterInput({
+        email: "a@b.c",
+        fullName: "Студент",
+        password: "password1",
+        role: "student",
+        groupId: "",
+      }),
+    ).toEqual({ groupId: "Укажите ID группы" });
+    expect(
+      validateRegisterInput({
+        email: "a@b.c",
+        fullName: "Студент",
+        password: "password1",
+        role: "student",
+        groupId: "g",
+      }),
+    ).toEqual({});
   });
 });

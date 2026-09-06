@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 
+import "./Auth.css";
+
 export type UserRole = "student" | "teacher";
 
 export interface TokenPair {
@@ -89,15 +91,43 @@ interface LoginProps {
   onSuccess?: (role: UserRole) => void;
 }
 
+export interface LoginFieldErrors {
+  email?: string;
+  password?: string;
+}
+
+export function validateLoginInput(input: {
+  email: string;
+  password: string;
+}): LoginFieldErrors {
+  const errors: LoginFieldErrors = {};
+  const email = input.email.trim();
+  if (!email) {
+    errors.email = "Введите email";
+  } else if (!email.includes("@")) {
+    errors.email = "В email не хватает @ — проверьте адрес";
+  }
+  if (!input.password) {
+    errors.password = "Введите пароль";
+  }
+  return errors;
+}
+
 export function Login({ apiBaseUrl, onSuccess }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    const hints = validateLoginInput({ email, password });
+    setFieldErrors(hints);
+    if (Object.keys(hints).length > 0) {
+      return;
+    }
     setPending(true);
     try {
       const pair = await loginUser({ email, password }, { apiBaseUrl });
@@ -119,38 +149,58 @@ export function Login({ apiBaseUrl, onSuccess }: LoginProps) {
   }
 
   return (
-    <main
-      style={{ maxWidth: 480, margin: "0 auto", padding: 24, fontFamily: "sans-serif" }}
-    >
-      <h1>Вход</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input
-            type="email"
-            name="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          Пароль
-          <input
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </label>
-        {error && <p role="alert">{error}</p>}
-        <button type="submit" disabled={pending}>
-          {pending ? "Входим…" : "Войти"}
-        </button>
-      </form>
+    <main className="auth-page">
+      <div className="auth-card">
+        <p className="auth-logo">Умная очередь</p>
+        <h1 className="auth-title">Вход</h1>
+        <p className="auth-subtitle">Очереди, время и уведомления — в одном месте</p>
+        <form noValidate onSubmit={handleSubmit}>
+          <label className="auth-field">
+            <span className="auth-label">Email</span>
+            <input
+              className={fieldErrors.email ? "auth-input auth-input--invalid" : "auth-input"}
+              type="email"
+              name="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              aria-invalid={Boolean(fieldErrors.email)}
+              aria-describedby={fieldErrors.email ? "login-email-hint" : undefined}
+            />
+            {fieldErrors.email && (
+              <span id="login-email-hint" className="auth-hint">
+                {fieldErrors.email}
+              </span>
+            )}
+          </label>
+          <label className="auth-field">
+            <span className="auth-label">Пароль</span>
+            <input
+              className={fieldErrors.password ? "auth-input auth-input--invalid" : "auth-input"}
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              aria-invalid={Boolean(fieldErrors.password)}
+              aria-describedby={fieldErrors.password ? "login-password-hint" : undefined}
+            />
+            {fieldErrors.password && (
+              <span id="login-password-hint" className="auth-hint">
+                {fieldErrors.password}
+              </span>
+            )}
+          </label>
+          {error && (
+            <p role="alert" className="auth-error">
+              {error}
+            </p>
+          )}
+          <button type="submit" disabled={pending} className="auth-submit">
+            {pending ? "Входим…" : "Войти"}
+          </button>
+        </form>
+      </div>
     </main>
   );
 }
