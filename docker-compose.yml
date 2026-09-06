@@ -10,8 +10,6 @@ services:
       interval: 2s
       timeout: 3s
       retries: 15
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -20,11 +18,16 @@ services:
       context: ./backend
     environment:
       DB_URL: ${DB_URL:-postgresql+psycopg://smart_queue:smart_queue@postgres:5432/smart_queue}
+      JWT_SECRET: ${JWT_SECRET:-development-only-change-me-use-32-bytes}
+      JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
+      JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
     depends_on:
       postgres:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
+    volumes:
+      - ./tests:/tests:ro
 
 volumes:
   postgres_data:

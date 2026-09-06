@@ -26,6 +26,7 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(
         PG_UUID(as_uuid=True), primary_key=True, default=uuid4
     )
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
     role: Mapped[UserRole] = mapped_column(
         SAEnum(UserRole, name="user_role", values_callable=lambda enum: [e.value for e in enum]),
         nullable=False,
