@@ -5,6 +5,8 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from models.group import Base
+from models.queue_entry import QueueEntry  # noqa: F401 — регистрирует таблицу
+from models.session import Session  # noqa: F401 — регистрирует таблицу
 from models.user import User  # noqa: F401 — регистрирует таблицу в metadata
 
 
