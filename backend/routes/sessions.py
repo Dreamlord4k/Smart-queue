@@ -20,6 +20,7 @@ from backend.queue.eta import (
     normalize_active_positions,
     update_ema,
 )
+from backend.realtime.events import publish_session_event
 
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -462,6 +463,7 @@ def update_session(
         report=report,
     )
     db.commit()
+    publish_session_event(reception.id, "session.updated")
     return response
 
 
@@ -517,6 +519,7 @@ def add_participant(
         active_queue=_eta_queue(reception, active_entries, db),
     )
     db.commit()
+    publish_session_event(reception.id, "participant.added")
     return response
 
 
@@ -561,6 +564,7 @@ def remove_participant(
         active_queue=_eta_queue(reception, active_entries, db),
     )
     db.commit()
+    publish_session_event(reception.id, "participant.removed")
     return response
 
 
@@ -575,4 +579,5 @@ def freeze_session(
         reception.frozen = True
         db.commit()
         db.refresh(reception)
+        publish_session_event(reception.id, "session.frozen")
     return FreezeResponse(id=reception.id, frozen=reception.frozen)

@@ -21,6 +21,7 @@ from backend.queue.eta import (
     normalize_active_positions,
     update_ema,
 )
+from backend.realtime.events import publish_session_event
 
 
 router = APIRouter(tags=["queue"])
@@ -357,6 +358,12 @@ def _transition_called_entry(
         active_queue=_eta_response(db, reception, active_entries),
     )
     db.commit()
+    publish_session_event(
+        reception.id,
+        "queue.done"
+        if target_status == QueueEntryStatus.DONE
+        else "queue.skipped",
+    )
     return response
 
 
@@ -458,6 +465,7 @@ def reorder_own_entry(
         active_queue=_eta_response(db, reception, reordered),
     )
     db.commit()
+    publish_session_event(reception.id, "queue.reordered")
     return response
 
 
@@ -488,6 +496,7 @@ def set_own_entry_lock(
         active_queue=_eta_response(db, reception, active_entries),
     )
     db.commit()
+    publish_session_event(reception.id, "queue.locked")
     return response
 
 
@@ -548,14 +557,16 @@ def mark_absent(
     if released_channel is not None:
         _call_next(active_entries, released_channel, datetime.now(timezone.utc))
 
-    db.commit()
-    return AbsenceResponse(
+    response = AbsenceResponse(
         id=entry.id,
         session_id=entry.session_id,
         status=entry.status,
         absence_reason=entry.absence_reason,
         active_queue=_eta_response(db, reception, active_entries),
     )
+    db.commit()
+    publish_session_event(reception.id, "queue.absent")
+    return response
 
 
 @router.get("/students/me/queues", response_model=list[MyQueueResponse])

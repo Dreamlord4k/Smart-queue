@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 
 import { createTeacherApi, type TeacherApi } from "../api/teacher";
 import "../components/teacher/Teacher.css";
+import { useQueueSocket } from "../hooks/useQueueSocket";
 import type {
   GroupWithStudents,
   QueueEntryState,
@@ -75,6 +76,13 @@ export function TeacherSession({
       setError(reason instanceof Error ? reason.message : "Не удалось загрузить очередь"),
     );
   }, [initialQueue, loadQueue]);
+
+  useQueueSocket({
+    sessionId: session.id,
+    accessToken,
+    apiBaseUrl,
+    onUpdate: loadQueue,
+  });
 
   useEffect(() => {
     if (groups.length > 0) return;
