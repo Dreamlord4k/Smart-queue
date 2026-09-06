@@ -1,15 +1,18 @@
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/workspace/backend
 
-WORKDIR /app
+WORKDIR /workspace
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.txt /tmp/backend-requirements.txt
+RUN pip install --no-cache-dir -r /tmp/backend-requirements.txt
 
-COPY . .
+COPY backend ./backend
+
+WORKDIR /workspace/backend
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic -c /app/alembic.ini upgrade head && uvicorn main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic -c /workspace/backend/alembic.ini upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port 8000"]
