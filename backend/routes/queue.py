@@ -121,6 +121,7 @@ class QueueStateEntryResponse(EtaQueueEntryResponse):
 
 class QueueStateResponse(BaseModel):
     session_id: UUID
+    frozen: bool
     entries: list[QueueStateEntryResponse]
 
 
@@ -656,4 +657,8 @@ def get_queue_state(
         )
         for entry, student in rows
     ]
-    return QueueStateResponse(session_id=session_id, entries=entries)
+    return QueueStateResponse(
+        session_id=session_id,
+        frozen=reception.frozen,
+        entries=entries,
+    )

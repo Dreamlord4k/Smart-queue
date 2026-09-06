@@ -1,0 +1,164 @@
+.student-page {
+  min-height: 100dvh;
+  padding: 28px 16px 48px;
+  background: #f2f6fc;
+  color: #0b1b33;
+  font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", sans-serif;
+}
+
+.student-shell {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+}
+
+.student-nav,
+.student-actions,
+.student-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.student-nav {
+  justify-content: flex-end;
+  width: min(1040px, calc(100% - 32px));
+  margin: 18px auto -10px;
+}
+
+.student-header,
+.student-line {
+  justify-content: space-between;
+}
+
+.student-title {
+  margin: 8px 0 6px;
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.student-muted {
+  color: #5a6b87;
+}
+
+.student-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.student-panel,
+.student-entry {
+  background: #ffffff;
+  border: 1px solid #dce6f3;
+  border-radius: 22px;
+  box-shadow: 0 8px 24px rgba(11, 27, 51, 0.06);
+}
+
+.student-panel {
+  padding: 20px;
+}
+
+.student-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student-entry {
+  padding: 14px 16px;
+}
+
+.student-entry--own {
+  border: 2px solid #2f7cf6;
+  background: #f5f9ff;
+}
+
+.student-entry--draggable {
+  cursor: grab;
+}
+
+.student-entry--draggable:active {
+  cursor: grabbing;
+}
+
+.student-badge {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #245da9;
+  background: #e8f1ff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.student-button,
+.student-input,
+.student-textarea {
+  box-sizing: border-box;
+  font: inherit;
+  border-radius: 14px;
+}
+
+.student-button {
+  padding: 10px 14px;
+  color: #165ab9;
+  background: #e8f1ff;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.student-button--primary {
+  color: #ffffff;
+  background: #2f7cf6;
+}
+
+.student-button--danger {
+  color: #a93429;
+  background: #fff0ee;
+}
+
+.student-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.student-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.student-input,
+.student-textarea {
+  width: 100%;
+  padding: 11px 13px;
+  color: #0b1b33;
+  background: #f2f6fc;
+  border: 2px solid transparent;
+  resize: vertical;
+}
+
+.student-input:focus,
+.student-textarea:focus {
+  outline: none;
+  border-color: #2f7cf6;
+}
+
+.student-error {
+  padding: 12px 14px;
+  color: #a93429;
+  background: #fff0ee;
+  border-radius: 14px;
+}
+
+@media (max-width: 760px) {
+  .student-grid {
+    grid-template-columns: 1fr;
+  }
+}

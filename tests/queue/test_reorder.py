@@ -190,8 +190,13 @@ def test_frozen_session_rejects_reorder(client: TestClient) -> None:
     response = reorder(
         client, reception, entries[0], students[0], target=entries[1], placement="after"
     )
+    queue_state = client.get(
+        f"/sessions/{reception.id}/queue", headers=authorization(students[0])
+    )
 
     assert response.status_code == 409
+    assert queue_state.status_code == 200
+    assert queue_state.json()["frozen"] is True
     with SessionLocal() as db:
         assert db.scalar(select(QueueMoveLog)) is None
 

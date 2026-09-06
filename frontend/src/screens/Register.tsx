@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import type { UserRole } from "./Login";
+import type { PublicGroup } from "../types/student";
 import "./Auth.css";
 import { AuthTabs } from "./AuthTabs";
 
@@ -71,6 +72,7 @@ export async function registerUser(
 interface RegisterProps {
   apiBaseUrl?: string;
   onSuccess?: (user: RegisteredUser) => void;
+  initialGroups?: PublicGroup[];
 }
 
 export interface RegisterFieldErrors {
@@ -97,12 +99,12 @@ export function validateRegisterInput(input: RegisterInput): RegisterFieldErrors
     errors.password = "Пароль короткий — минимум 8 символов";
   }
   if (input.role === "student" && !input.groupId?.trim()) {
-    errors.groupId = "Укажите ID группы";
+    errors.groupId = "Выберите группу";
   }
   return errors;
 }
 
-export function Register({ apiBaseUrl, onSuccess }: RegisterProps) {
+export function Register({ apiBaseUrl, onSuccess, initialGroups }: RegisterProps) {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -111,6 +113,25 @@ export function Register({ apiBaseUrl, onSuccess }: RegisterProps) {
   const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [groups, setGroups] = useState<PublicGroup[]>(initialGroups ?? []);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialGroups !== undefined) return;
+    const controller = new AbortController();
+    fetch(`${resolveApiBaseUrl(apiBaseUrl)}/groups`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Не удалось загрузить группы");
+        return (await response.json()) as PublicGroup[];
+      })
+      .then(setGroups)
+      .catch((reason: unknown) => {
+        if (!(reason instanceof DOMException && reason.name === "AbortError")) {
+          setGroupsError(reason instanceof Error ? reason.message : "Не удалось загрузить группы");
+        }
+      });
+    return () => controller.abort();
+  }, [apiBaseUrl, initialGroups]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -214,22 +235,26 @@ export function Register({ apiBaseUrl, onSuccess }: RegisterProps) {
           </label>
           {role === "student" && (
             <label className="auth-field">
-              <span className="auth-label">ID группы (UUID)</span>
-              <input
-                className={fieldErrors.groupId ? "auth-input auth-input--invalid" : "auth-input"}
-                type="text"
+              <span className="auth-label">Группа</span>
+              <select
+                className={fieldErrors.groupId ? "auth-select auth-input--invalid" : "auth-select"}
                 name="group_id"
-                placeholder="UUID группы"
                 value={groupId}
                 onChange={(event) => setGroupId(event.target.value)}
                 aria-invalid={Boolean(fieldErrors.groupId)}
                 aria-describedby={fieldErrors.groupId ? "register-group-hint" : undefined}
-              />
+              >
+                <option value="">Выберите группу</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>{group.name}</option>
+                ))}
+              </select>
               {fieldErrors.groupId && (
                 <span id="register-group-hint" className="auth-hint">
                   {fieldErrors.groupId}
                 </span>
               )}
+              {groupsError && <span className="auth-hint">{groupsError}</span>}
             </label>
           )}
           {error && (

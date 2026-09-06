@@ -7,6 +7,7 @@ import type {
   SessionSummary,
   SessionUpdate,
 } from "../types/teacher";
+import { fetchWithSession } from "../auth/session";
 
 type FetchImpl = typeof fetch;
 
@@ -44,14 +45,13 @@ export function createTeacherApi(
   fetchImpl: FetchImpl = fetch,
 ): TeacherApi {
   async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetchImpl(`${apiBaseUrl}${path}`, {
+    const response = await fetchWithSession(path, {
       ...init,
       headers: {
-        Authorization: `Bearer ${accessToken}`,
         ...(init.body ? { "Content-Type": "application/json" } : {}),
         ...init.headers,
       },
-    });
+    }, { accessToken, apiBaseUrl, fetchImpl });
     if (!response.ok) {
       throw new Error(await errorMessage(response));
     }
