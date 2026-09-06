@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import "./Auth.css";
+import { AuthTabs } from "./AuthTabs";
 
 export type UserRole = "student" | "teacher";
 
@@ -154,6 +155,7 @@ export function Login({ apiBaseUrl, onSuccess }: LoginProps) {
         <p className="auth-logo">Умная очередь</p>
         <h1 className="auth-title">Вход</h1>
         <p className="auth-subtitle">Очереди, время и уведомления — в одном месте</p>
+        <AuthTabs active="login" />
         <form noValidate onSubmit={handleSubmit}>
           <label className="auth-field">
             <span className="auth-label">Email</span>

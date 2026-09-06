@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Login, decodeRoleFromToken, type UserRole } from "./screens/Login";
 import { MyQueues } from "./screens/MyQueues";
 import { Register } from "./screens/Register";
+import { AUTH_ROUTE_EVENT, type AuthRoutePath } from "./screens/AuthTabs";
 
 export type AppRoute = "/login" | "/register" | "/queues" | "/teacher";
 
@@ -39,24 +40,28 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
     setRoute(routeForRole(role));
   }
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const onAuthRoute = (event: Event) => {
+      const route = (event as CustomEvent<AuthRoutePath>).detail;
+      if (route === "/login" || route === "/register") {
+        setRoute(route);
+      }
+    };
+    window.addEventListener(AUTH_ROUTE_EVENT, onAuthRoute);
+    return () => window.removeEventListener(AUTH_ROUTE_EVENT, onAuthRoute);
+  }, []);
+
   // Защищённые маршруты без токена ведут на вход.
   const visible: AppRoute =
     !token && (route === "/queues" || route === "/teacher") ? "/login" : route;
 
+  // Шапки-навигации нет: переключение Вход/Регистрация живёт
+  // сегментом внутри карточки, остальные экраны — без дублей.
   return (
     <div style={{ fontFamily: "sans-serif" }}>
-      <nav style={{ display: "flex", gap: 12, padding: "12px 24px" }}>
-        {!token && (
-          <>
-            <button type="button" onClick={() => setRoute("/login")}>
-              Вход
-            </button>
-            <button type="button" onClick={() => setRoute("/register")}>
-              Регистрация
-            </button>
-          </>
-        )}
-      </nav>
       {visible === "/login" && <Login onSuccess={handleLoginSuccess} />}
       {visible === "/register" && <Register onSuccess={() => setRoute("/login")} />}
       {visible === "/queues" && token && <MyQueues accessToken={token} />}

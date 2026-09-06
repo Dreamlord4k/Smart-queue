@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 
 import type { UserRole } from "./Login";
 import "./Auth.css";
+import { AuthTabs } from "./AuthTabs";
 
 export interface RegisteredUser {
   id: string;
@@ -143,6 +144,7 @@ export function Register({ apiBaseUrl, onSuccess }: RegisterProps) {
         <p className="auth-logo">Умная очередь</p>
         <h1 className="auth-title">Регистрация</h1>
         <p className="auth-subtitle">Минута — и вы в очереди на сдачу</p>
+        <AuthTabs active="register" />
         <form noValidate onSubmit={handleSubmit}>
           <label className="auth-field">
             <span className="auth-label">Email</span>

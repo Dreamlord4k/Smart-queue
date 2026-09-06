@@ -44,4 +44,15 @@ describe("App", () => {
 
     expect(html).toContain("Мои очереди");
   });
+
+  it("на auth-роутах нет дублирующей шапки-навигации", () => {
+    const loginHtml = renderToStaticMarkup(<App readToken={() => null} />);
+    const registerHtml = renderToStaticMarkup(
+      <App initialRoute="/register" readToken={() => null} />,
+    );
+
+    expect(loginHtml).not.toContain("<nav");
+    expect(registerHtml).not.toContain("<nav");
+    expect(registerHtml).toContain("auth-tabs");
+  });
 });
