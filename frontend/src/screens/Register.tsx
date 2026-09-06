@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 
-import type { UserRole } from "./Login";
+import type { UserRole } from "../auth/session";
 import type { PublicGroup } from "../types/student";
 import "./Auth.css";
 import { AuthTabs } from "./AuthTabs";

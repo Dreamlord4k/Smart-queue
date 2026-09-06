@@ -10,9 +10,6 @@ import {
 import "./Auth.css";
 import { AuthTabs } from "./AuthTabs";
 
-export { decodeRoleFromToken, saveTokens } from "../auth/session";
-export type { TokenPair, TokenStorage, UserRole } from "../auth/session";
-
 type FetchImpl = typeof fetch;
 
 function resolveApiBaseUrl(explicit?: string): string {
