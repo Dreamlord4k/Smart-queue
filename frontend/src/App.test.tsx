@@ -28,13 +28,13 @@ describe("App", () => {
     expect(html).not.toContain("Мои очереди");
   });
 
-  it("преподаватель с токеном видит заглушку кабинета", () => {
+  it("преподаватель с токеном видит дашборд сессий", () => {
     const html = renderToStaticMarkup(
       <App initialRoute="/teacher" readToken={() => fakeJwt("teacher")} />,
     );
 
-    expect(html).toContain("Кабинет преподавателя");
-    expect(html).toContain("скоро");
+    expect(html).toContain("Мои сессии");
+    expect(html).toContain("Новая сессия");
   });
 
   it("студент с токеном попадает в свои очереди", () => {

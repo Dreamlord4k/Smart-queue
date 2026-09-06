@@ -1,0 +1,214 @@
+:root {
+  color: #0b1b33;
+  background: #f2f6fc;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f2f6fc;
+}
+
+.teacher-page {
+  min-height: 100vh;
+  padding: 32px clamp(16px, 4vw, 56px) 56px;
+  color: #0b1b33;
+}
+
+.teacher-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.teacher-header,
+.teacher-toolbar,
+.teacher-actions,
+.teacher-session-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.teacher-eyebrow {
+  margin: 0 0 5px;
+  color: #2f7cf6;
+  font-weight: 800;
+}
+
+.teacher-title {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 42px);
+}
+
+.teacher-muted {
+  color: #64748b;
+}
+
+.teacher-button {
+  padding: 10px 16px;
+  color: #174477;
+  background: #e7f0ff;
+  border: 0;
+  border-radius: 14px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.teacher-button--primary {
+  color: #fff;
+  background: #2f7cf6;
+}
+
+.teacher-button--danger {
+  color: #fff;
+  background: #d94b40;
+}
+
+.teacher-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.teacher-panel,
+.teacher-card,
+.teacher-channel,
+.teacher-report {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 8px 28px rgba(11, 27, 51, 0.07);
+}
+
+.teacher-panel {
+  margin-top: 22px;
+  padding: 22px;
+}
+
+.teacher-section {
+  margin-top: 30px;
+}
+
+.teacher-grid,
+.teacher-channels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.teacher-card,
+.teacher-channel {
+  padding: 18px;
+}
+
+.teacher-card h3,
+.teacher-channel h3 {
+  margin-top: 0;
+}
+
+.teacher-badge {
+  display: inline-flex;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: #24558b;
+  background: #e7f0ff;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.teacher-form__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.teacher-form label > span,
+.teacher-control label > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.teacher-form input:not([type="checkbox"]),
+.teacher-form select,
+.teacher-control input,
+.teacher-control select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 13px;
+  color: #0b1b33;
+  background: #f4f7fb;
+  border: 1px solid #d7e0ec;
+  border-radius: 12px;
+  font: inherit;
+}
+
+.teacher-form fieldset {
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid #d7e0ec;
+  border-radius: 16px;
+}
+
+.teacher-checks {
+  display: grid;
+  gap: 9px;
+}
+
+.teacher-checks--students {
+  max-height: 180px;
+  margin-top: 12px;
+  overflow: auto;
+}
+
+.teacher-list {
+  display: grid;
+  gap: 9px;
+  padding: 0;
+  list-style: none;
+}
+
+.teacher-list li {
+  padding: 13px 15px;
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 3px 14px rgba(11, 27, 51, 0.05);
+}
+
+.teacher-reasons {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+  color: #53657f;
+  font-size: 14px;
+}
+
+.teacher-report {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+  padding: 20px;
+}
+
+.teacher-report strong {
+  display: block;
+  margin-top: 5px;
+  font-size: 24px;
+}
+
+.teacher-error {
+  padding: 12px 15px;
+  color: #a9342b;
+  background: #fff0ee;
+  border-radius: 14px;
+}
+
+@media (max-width: 640px) {
+  .teacher-page {
+    padding-top: 20px;
+  }
+}
