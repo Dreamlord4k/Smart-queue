@@ -44,4 +44,14 @@ describe("MyQueues", () => {
     expect(html).toContain("Вас вызывают");
     expect(html.match(/Возможное пересечение/g)).toHaveLength(2);
   });
+
+  it("карточки и кнопка используют классы единой темы", () => {
+    const html = renderToStaticMarkup(<MyQueues initialQueues={queues} />);
+
+    expect(html).toContain("mq-page");
+    expect(html).toContain("mq-grid");
+    expect(html.match(/mq-card/g)).toHaveLength(2);
+    expect(html).toContain("mq-button");
+    expect(html).not.toContain("style=");
+  });
 });

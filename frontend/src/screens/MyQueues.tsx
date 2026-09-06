@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
+import "../theme.css";
+
 export type QueueStatus = "waiting" | "called" | "done" | "skipped" | "absent";
 
 export interface MyQueueCard {
@@ -115,18 +117,18 @@ export function MyQueues({
   const overlaps = useMemo(() => overlappingEntries(queues), [queues]);
 
   return (
-    <main style={{ maxWidth: 960, margin: "0 auto", padding: 24, fontFamily: "sans-serif" }}>
+    <main className="mq-page">
       <h1>Мои очереди</h1>
       {loading && <p>Загружаем очереди…</p>}
-      {error && <p role="alert">{error}</p>}
+      {error && (
+        <p role="alert" className="mq-error">
+          {error}
+        </p>
+      )}
       {!loading && !error && queues.length === 0 && <p>Активных и предстоящих очередей нет.</p>}
-      <section aria-label="Активные и предстоящие очереди" style={{ display: "grid", gap: 16 }}>
+      <section aria-label="Активные и предстоящие очереди" className="mq-grid">
         {queues.map((card) => (
-          <article
-            key={card.entry_id}
-            data-testid={`queue-${card.entry_id}`}
-            style={{ border: "1px solid #d7dce2", borderRadius: 12, padding: 18 }}
-          >
+          <article key={card.entry_id} data-testid={`queue-${card.entry_id}`} className="mq-card">
             <h2>{card.course_name}</h2>
             <p>{card.teacher_name} · аудитория {card.room}</p>
             <p>{card.date} в {card.start_time.slice(0, 5)}</p>
@@ -134,9 +136,11 @@ export function MyQueues({
             <p>ETA: {formatEta(card)}</p>
             <p>Статус: {statusLabels[card.status]}</p>
             {overlaps.has(card.entry_id) && (
-              <p role="status">Возможное пересечение с другой очередью этого дня</p>
+              <p role="status" className="mq-warn">
+                Возможное пересечение с другой очередью этого дня
+              </p>
             )}
-            <button type="button" onClick={() => onOpenQueue?.(card.session_id)}>
+            <button type="button" onClick={() => onOpenQueue?.(card.session_id)} className="mq-button">
               Открыть очередь
             </button>
           </article>
