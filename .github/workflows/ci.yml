@@ -1,0 +1,62 @@
+# Скелет CI из T-014: backend- и frontend-проверки на push/PR в main.
+# Секретов здесь нет: DB_URL и JWT_SECRET ниже — заведомо тестовые
+# значения только для CI-прогона, не боевые секреты.
+
+name: CI
+
+"on":
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ci
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_URL: postgresql+psycopg://ci:ci@localhost:5432/ci
+      JWT_SECRET: ci-only-dummy-not-a-secret
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-python@v5.3.0
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Apply migrations
+        run: alembic -c backend/alembic.ini upgrade head
+      - name: Backend tests
+        run: python -m pytest -q -p no:cacheprovider tests/auth tests/sessions tests/queue
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test -- --run
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
