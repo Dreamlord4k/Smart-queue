@@ -166,6 +166,21 @@ def test_only_owner_teacher_can_finish_current(client: TestClient) -> None:
         assert db.get(QueueEntry, entries[0].id).status == QueueEntryStatus.CALLED
 
 
+def test_queue_state_exposes_current_channel_to_teacher(
+    client: TestClient,
+) -> None:
+    teacher = add_user("teacher@example.com", UserRole.TEACHER)
+    student = add_user("student@example.com", UserRole.STUDENT)
+    reception, _ = add_active_session(teacher, [student])
+
+    response = client.get(
+        f"/sessions/{reception.id}/queue", headers=authorization(teacher)
+    )
+
+    assert response.status_code == 200
+    assert response.json()["entries"][0]["channel"] == 1
+
+
 def test_done_rejects_called_entry_outside_active_session(
     client: TestClient,
 ) -> None:

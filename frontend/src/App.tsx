@@ -4,8 +4,16 @@ import { Login, decodeRoleFromToken, type UserRole } from "./screens/Login";
 import { MyQueues } from "./screens/MyQueues";
 import { Register } from "./screens/Register";
 import { AUTH_ROUTE_EVENT, type AuthRoutePath } from "./screens/AuthTabs";
+import { TeacherDashboard } from "./screens/TeacherDashboard";
+import { TeacherSession } from "./screens/TeacherSession";
+import type { SessionSummary } from "./types/teacher";
 
-export type AppRoute = "/login" | "/register" | "/queues" | "/teacher";
+export type AppRoute =
+  | "/login"
+  | "/register"
+  | "/queues"
+  | "/teacher"
+  | "/teacher/session";
 
 function readStoredToken(): string | null {
   if (typeof window === "undefined" || !window.localStorage) {
@@ -25,6 +33,7 @@ interface AppProps {
 
 export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
   const [token, setToken] = useState<string | null>(() => readToken());
+  const [selectedSession, setSelectedSession] = useState<SessionSummary | null>(null);
   const [route, setRoute] = useState<AppRoute>(() => {
     if (initialRoute) {
       return initialRoute;
@@ -56,7 +65,9 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
 
   // Защищённые маршруты без токена ведут на вход.
   const visible: AppRoute =
-    !token && (route === "/queues" || route === "/teacher") ? "/login" : route;
+    !token && (route === "/queues" || route.startsWith("/teacher"))
+      ? "/login"
+      : route;
 
   // Шапки-навигации нет: переключение Вход/Регистрация живёт
   // сегментом внутри карточки, остальные экраны — без дублей.
@@ -65,11 +76,24 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
       {visible === "/login" && <Login onSuccess={handleLoginSuccess} />}
       {visible === "/register" && <Register onSuccess={() => setRoute("/login")} />}
       {visible === "/queues" && token && <MyQueues accessToken={token} />}
-      {visible === "/teacher" && (
-        <main style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
-          <h1>Кабинет преподавателя</h1>
-          <p>Экран управления сессиями — скоро.</p>
-        </main>
+      {visible === "/teacher" && token && (
+        <TeacherDashboard
+          accessToken={token}
+          onOpenSession={(session) => {
+            setSelectedSession(session);
+            setRoute("/teacher/session");
+          }}
+        />
+      )}
+      {visible === "/teacher/session" && token && selectedSession && (
+        <TeacherSession
+          accessToken={token}
+          session={selectedSession}
+          onBack={() => setRoute("/teacher")}
+        />
+      )}
+      {visible === "/teacher/session" && token && !selectedSession && (
+        <TeacherDashboard accessToken={token} onOpenSession={setSelectedSession} />
       )}
     </div>
   );

@@ -113,6 +113,7 @@ class QueueTransitionResponse(BaseModel):
 
 class QueueStateEntryResponse(EtaQueueEntryResponse):
     student_name: str
+    channel: int | None
     locked: bool
     lock_reason: str | None
     absence_reason: str | None
@@ -646,6 +647,7 @@ def get_queue_state(
             student_name=student.full_name,
             position=entry.position,
             status=entry.status,
+            channel=entry.channel,
             locked=entry.locked,
             lock_reason=entry.lock_reason if is_owner else None,
             absence_reason=entry.absence_reason if is_owner else None,
