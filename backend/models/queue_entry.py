@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.models.group import Base
 
 if TYPE_CHECKING:
+    from backend.models.queue_move_log import QueueMoveLog
     from backend.models.session import Session
 
 
@@ -65,3 +66,6 @@ class QueueEntry(Base):
     )
 
     session: Mapped[Session] = relationship(back_populates="entries")
+    move_logs: Mapped[list[QueueMoveLog]] = relationship(
+        cascade="all, delete-orphan"
+    )

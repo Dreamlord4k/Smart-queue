@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time, timezone
+from enum import Enum
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session as DatabaseSession
 
 from backend.auth.dependencies import get_current_user, get_db, require_role
 from backend.models.queue_entry import QueueEntry, QueueEntryStatus
+from backend.models.queue_move_log import QueueMoveLog
 from backend.models.service_stat import ServiceStat
 from backend.models.session import Session, SessionStatus
 from backend.models.user import User, UserRole
@@ -24,10 +26,34 @@ from backend.queue.eta import (
 router = APIRouter(tags=["queue"])
 
 
+class QueuePlacement(str, Enum):
+    BEFORE = "before"
+    AFTER = "after"
+
+
 class AbsenceRequest(BaseModel):
     absence_reason: str | None = Field(default=None, max_length=2000)
 
     @field_validator("absence_reason")
+    @classmethod
+    def normalize_optional_reason(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+
+class ReorderRequest(BaseModel):
+    entry_id: UUID
+    target_entry_id: UUID | None = None
+    placement: QueuePlacement
+
+
+class LockRequest(BaseModel):
+    locked: bool
+    lock_reason: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("lock_reason")
     @classmethod
     def normalize_optional_reason(cls, value: str | None) -> str | None:
         if value is None:
@@ -51,6 +77,24 @@ class AbsenceResponse(BaseModel):
     id: UUID
     session_id: UUID
     status: QueueEntryStatus
+    absence_reason: str | None
+    active_queue: list[EtaQueueEntryResponse]
+
+
+class ReorderResponse(BaseModel):
+    entry_id: UUID
+    old_position: int
+    new_position: int
+    moved_at: datetime
+    active_queue: list[EtaQueueEntryResponse]
+
+
+class LockResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    status: QueueEntryStatus
+    locked: bool
+    lock_reason: str | None
     absence_reason: str | None
     active_queue: list[EtaQueueEntryResponse]
 
@@ -203,6 +247,37 @@ def _update_service_stat(
     return service_stat
 
 
+def _owned_waiting_entry(
+    db: DatabaseSession,
+    session_id: UUID,
+    entry_id: UUID,
+    student: User,
+) -> tuple[Session, QueueEntry]:
+    reception = db.scalar(
+        select(Session).where(Session.id == session_id).with_for_update()
+    )
+    if reception is None:
+        raise HTTPException(status_code=404, detail="Сессия не найдена")
+
+    entry = db.scalar(
+        select(QueueEntry)
+        .where(
+            QueueEntry.id == entry_id,
+            QueueEntry.session_id == session_id,
+        )
+        .with_for_update()
+    )
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Запись очереди не найдена")
+    if entry.student_id != student.id:
+        raise HTTPException(status_code=403, detail="Можно изменить только свою запись")
+    if entry.status != QueueEntryStatus.WAITING:
+        raise HTTPException(
+            status_code=409, detail="Изменять можно только ожидающую запись"
+        )
+    return reception, entry
+
+
 def _transition_called_entry(
     session_id: UUID,
     entry_id: UUID,
@@ -277,6 +352,137 @@ def _transition_called_entry(
         ema_estimate=service_stat.ema_estimate if service_stat else None,
         variance=service_stat.variance if service_stat else None,
         n_observations=service_stat.n_observations if service_stat else 0,
+        active_queue=_eta_response(db, reception, active_entries),
+    )
+    db.commit()
+    return response
+
+
+@router.patch(
+    "/sessions/{session_id}/queue/reorder", response_model=ReorderResponse
+)
+def reorder_own_entry(
+    session_id: UUID,
+    payload: ReorderRequest,
+    student: User = Depends(require_role(UserRole.STUDENT)),
+    db: DatabaseSession = Depends(get_db),
+) -> ReorderResponse:
+    reception, entry = _owned_waiting_entry(
+        db, session_id, payload.entry_id, student
+    )
+    if entry.locked:
+        raise HTTPException(
+            status_code=409,
+            detail="Сначала снимите фиксацию со своей записи",
+        )
+    if reception.frozen:
+        raise HTTPException(
+            status_code=409, detail="Порядок этой сессии уже заморожен"
+        )
+
+    active_entries = _active_entries(db, session_id, lock=True)
+    source = next(
+        (candidate for candidate in active_entries if candidate.id == entry.id),
+        None,
+    )
+    if source is None:
+        raise HTTPException(
+            status_code=409, detail="Запись уже не входит в активную очередь"
+        )
+
+    reordered = [candidate for candidate in active_entries if candidate.id != source.id]
+    if payload.target_entry_id is None:
+        insert_at = len(reordered)
+    else:
+        if payload.target_entry_id == source.id:
+            raise HTTPException(
+                status_code=409, detail="Исходная и целевая записи совпадают"
+            )
+        target = next(
+            (
+                candidate
+                for candidate in reordered
+                if candidate.id == payload.target_entry_id
+            ),
+            None,
+        )
+        if target is None:
+            raise HTTPException(status_code=404, detail="Целевая запись не найдена")
+        if target.status != QueueEntryStatus.WAITING:
+            raise HTTPException(
+                status_code=409,
+                detail="Переставлять запись можно только среди ожидающих",
+            )
+        if target.locked:
+            raise HTTPException(
+                status_code=409, detail="Целевое место зафиксировано"
+            )
+        target_index = reordered.index(target)
+        insert_at = target_index + (
+            1 if payload.placement == QueuePlacement.AFTER else 0
+        )
+
+    reordered.insert(insert_at, source)
+    for position, candidate in enumerate(reordered, start=1):
+        if candidate.locked and candidate.position != position:
+            raise HTTPException(
+                status_code=409, detail="Перестановка сдвинет зафиксированное место"
+            )
+
+    old_position = source.position
+    new_position = reordered.index(source) + 1
+    if new_position == old_position:
+        raise HTTPException(
+            status_code=409, detail="Запрошенная перестановка не меняет порядок"
+        )
+
+    for position, candidate in enumerate(reordered, start=1):
+        candidate.position = position
+    move_log = QueueMoveLog(
+        queue_entry_id=source.id,
+        moved_by=student.id,
+        old_position=old_position,
+        new_position=source.position,
+    )
+    db.add(move_log)
+    db.flush()
+    db.refresh(move_log)
+
+    response = ReorderResponse(
+        entry_id=source.id,
+        old_position=old_position,
+        new_position=source.position,
+        moved_at=move_log.moved_at,
+        active_queue=_eta_response(db, reception, reordered),
+    )
+    db.commit()
+    return response
+
+
+@router.patch(
+    "/sessions/{session_id}/queue/{entry_id}/lock",
+    response_model=LockResponse,
+)
+def set_own_entry_lock(
+    session_id: UUID,
+    entry_id: UUID,
+    payload: LockRequest,
+    student: User = Depends(require_role(UserRole.STUDENT)),
+    db: DatabaseSession = Depends(get_db),
+) -> LockResponse:
+    reception, entry = _owned_waiting_entry(db, session_id, entry_id, student)
+    entry.locked = payload.locked
+    entry.lock_reason = payload.lock_reason if payload.locked else None
+    db.flush()
+
+    active_entries = _active_entries(db, reception.id, lock=True)
+    response = LockResponse(
+        id=entry.id,
+        session_id=entry.session_id,
+        status=entry.status,
+        locked=entry.locked,
+        lock_reason=entry.lock_reason,
+        absence_reason=entry.absence_reason,
         active_queue=_eta_response(db, reception, active_entries),
     )
     db.commit()
