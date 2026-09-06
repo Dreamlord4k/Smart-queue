@@ -1,9 +1,10 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { decodeRoleFromToken, Login, loginUser, saveTokens, validateLoginInput } from "./Login";
+import { Login, loginUser, validateLoginInput } from "./Login";
 import { Register, registerUser, validateRegisterInput } from "./Register";
 import { emitAuthRoute } from "./AuthTabs";
+import { decodeRoleFromToken, saveTokens } from "../auth/session";
 
 function fakeJwt(role: string): string {
   const payload = btoa(JSON.stringify({ sub: "user-id", role }))
