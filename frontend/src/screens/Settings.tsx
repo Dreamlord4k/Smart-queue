@@ -5,6 +5,7 @@ import {
   type StudentApi,
   type TelegramLinkState,
 } from "../api/student";
+import { ThemeToggle } from "../components/ThemeToggle";
 import "../components/student/Student.css";
 
 interface SettingsProps {
@@ -96,6 +97,11 @@ export function Settings({
               </button>
             </>
           )}
+        </section>
+        <section className="student-panel" aria-label="Оформление">
+          <h2>Оформление</h2>
+          <p>Тёмная тема бережёт глаза вечером. Выбор запоминается на этом устройстве.</p>
+          <ThemeToggle />
         </section>
         <section className="student-panel" aria-label="Удаление профиля">
           <h2>Удалить мой профиль</h2>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import "../theme.css";
 
@@ -83,36 +83,38 @@ export function MyQueues({
   const [loading, setLoading] = useState(initialQueues === undefined);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (initialQueues !== undefined) {
-      return;
-    }
+  const load = useCallback(async (signal?: AbortSignal) => {
+    if (initialQueues !== undefined) return;
     if (!accessToken) {
       setError("Войдите, чтобы увидеть свои очереди");
       setLoading(false);
       return;
     }
-
-    const controller = new AbortController();
-    fetch(`${apiBaseUrl}/students/me/queues`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Не удалось загрузить очереди");
-        }
-        return (await response.json()) as MyQueueCard[];
-      })
-      .then(setQueues)
-      .catch((reason: unknown) => {
-        if (!(reason instanceof DOMException && reason.name === "AbortError")) {
-          setError(reason instanceof Error ? reason.message : "Неизвестная ошибка");
-        }
-      })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${apiBaseUrl}/students/me/queues`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal,
+      });
+      if (!response.ok) {
+        throw new Error("Не удалось загрузить очереди");
+      }
+      setQueues((await response.json()) as MyQueueCard[]);
+    } catch (reason: unknown) {
+      if (!(reason instanceof DOMException && reason.name === "AbortError")) {
+        setError(reason instanceof Error ? reason.message : "Неизвестная ошибка");
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [accessToken, apiBaseUrl, initialQueues]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void load(controller.signal);
+    return () => controller.abort();
+  }, [load]);
 
   const overlaps = useMemo(() => overlappingEntries(queues), [queues]);
 
@@ -123,14 +125,17 @@ export function MyQueues({
       {error && (
         <p role="alert" className="mq-error">
           {error}
+          <button type="button" className="mq-retry" onClick={() => void load()}>
+            Попробовать снова
+          </button>
         </p>
       )}
       {!loading && !error && queues.length === 0 && <p>Активных и предстоящих очередей нет.</p>}
       <section aria-label="Активные и предстоящие очереди" className="mq-grid">
         {queues.map((card) => (
-          <article key={card.entry_id} data-testid={`queue-${card.entry_id}`} className="mq-card">
+          <article key={card.entry_id} data-testid={`queue-${card.entry_id}`} className="mq-card anim-rise">
             <h2>{card.course_name}</h2>
-            <p>{card.teacher_name} · аудитория {card.room}</p>
+            <p>{card.teacher_name}, аудитория {card.room}</p>
             <p>{card.date} в {card.start_time.slice(0, 5)}</p>
             <p>Позиция: {card.position ?? "—"}</p>
             <p>ETA: {formatEta(card)}</p>

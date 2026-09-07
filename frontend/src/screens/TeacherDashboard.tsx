@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { createTeacherApi, type TeacherApi } from "../api/teacher";
 import { SessionForm } from "../components/teacher/SessionForm";
+import { ThemeToggle } from "../components/ThemeToggle";
 import "../components/teacher/Teacher.css";
 import type {
   CreateSessionInput,
@@ -42,14 +43,14 @@ function SessionCard({
   onOpen?: (session: SessionSummary) => void;
 }) {
   return (
-    <article className="teacher-card">
+    <article className="teacher-card anim-rise">
       <div className="teacher-session-line">
         <span className="teacher-badge">{session.status}</span>
         <span>{session.capacity} канал(а)</span>
       </div>
       <h3>{session.course_name}</h3>
-      <p>{session.date} · {session.start_time.slice(0, 5)}</p>
-      <p>Аудитория {session.room} · {session.duration_default} мин/студент</p>
+      <p>{session.date} в {session.start_time.slice(0, 5)}</p>
+      <p>Аудитория {session.room}, {session.duration_default} мин/студент</p>
       <p className="teacher-muted">
         {session.frozen ? "Порядок заморожен" : "Порядок ещё открыт"}
       </p>
@@ -126,13 +127,16 @@ export function TeacherDashboard({
             <h1 className="teacher-title">Мои сессии</h1>
             <p className="teacher-muted">Сегодняшние и предстоящие приёмы в одном месте</p>
           </div>
-          <button
-            className="teacher-button teacher-button--primary"
-            type="button"
-            onClick={() => setShowForm((value) => !value)}
-          >
-            {showForm ? "Скрыть форму" : "Новая сессия"}
-          </button>
+          <div className="teacher-actions">
+            <ThemeToggle />
+            <button
+              className="teacher-button teacher-button--primary"
+              type="button"
+              onClick={() => setShowForm((value) => !value)}
+            >
+              {showForm ? "Скрыть форму" : "Новая сессия"}
+            </button>
+          </div>
         </header>
 
         {error && <p className="teacher-error" role="alert">{error}</p>}

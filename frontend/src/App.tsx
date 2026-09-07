@@ -97,7 +97,7 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
   // Шапки-навигации нет: переключение Вход/Регистрация живёт
   // сегментом внутри карточки, остальные экраны — без дублей.
   return (
-    <div style={{ fontFamily: "sans-serif" }}>
+    <div className="app-root">
       {visible === "/login" && <Login onSuccess={handleLoginSuccess} />}
       {visible === "/register" && <Register onSuccess={() => setRoute("/login")} />}
       {visible === "/queues" && token && (

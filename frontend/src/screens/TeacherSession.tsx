@@ -65,6 +65,7 @@ export function TeacherSession({
   const [candidateId, setCandidateId] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const loadQueue = useCallback(async () => {
     setQueue(await api.getQueue(session.id));
@@ -98,11 +99,13 @@ export function TeacherSession({
     return [...unique.values()].sort((a, b) => a.full_name.localeCompare(b.full_name, "ru"));
   }, [availableGroups]);
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void>, successMessage?: string) {
     setPending(true);
     setError(null);
+    setNotice(null);
     try {
       await action();
+      if (successMessage) setNotice(successMessage);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Неизвестная ошибка");
     } finally {
@@ -116,14 +119,14 @@ export function TeacherSession({
       setSession(updated);
       setReport(updated.report);
       await loadQueue();
-    });
+    }, `Статус сессии: ${statusLabels[status]}`);
   }
 
   function freeze() {
     void run(async () => {
       const frozen = await api.freezeSession(session.id);
       setSession((current) => ({ ...current, frozen: frozen.frozen }));
-    });
+    }, "Список заморожен — порядок больше не меняется");
   }
 
   function changeDuration(event: FormEvent<HTMLFormElement>) {
@@ -134,14 +137,14 @@ export function TeacherSession({
       });
       setSession(updated);
       await loadQueue();
-    });
+    }, "Длительность приёма обновлена");
   }
 
-  function queueAction(action: () => Promise<unknown>) {
+  function queueAction(action: () => Promise<unknown>, successMessage?: string) {
     void run(async () => {
       await action();
       await loadQueue();
-    });
+    }, successMessage);
   }
 
   function addParticipant(event: FormEvent<HTMLFormElement>) {
@@ -150,7 +153,7 @@ export function TeacherSession({
     queueAction(async () => {
       await api.addParticipant(session.id, candidateId);
       setCandidateId("");
-    });
+    }, "Участник добавлен в конец очереди");
   }
 
   const entries = queue?.entries ?? [];
@@ -168,7 +171,7 @@ export function TeacherSession({
             <p className="teacher-eyebrow">{statusLabels[session.status]}</p>
             <h1 className="teacher-title">{session.course_name}</h1>
             <p className="teacher-muted">
-              {session.date} · {session.start_time.slice(0, 5)} · аудитория {session.room}
+              {session.date} в {session.start_time.slice(0, 5)}, аудитория {session.room}
             </p>
           </div>
           <span className="teacher-badge">
@@ -177,6 +180,7 @@ export function TeacherSession({
         </header>
 
         {error && <p className="teacher-error" role="alert">{error}</p>}
+        {notice && <p className="teacher-notice" role="status">{notice}</p>}
 
         <section className="teacher-panel teacher-toolbar" aria-label="Управление сессией">
           <div className="teacher-actions">
@@ -224,7 +228,7 @@ export function TeacherSession({
                 (entry) => entry.status === "called" && entry.channel === channel,
               );
               return (
-                <article className="teacher-channel" key={channel}>
+                <article className="teacher-channel anim-rise" key={channel}>
                   <span className="teacher-badge">Канал {channel}</span>
                   <h3>{current?.student_name ?? "Свободен"}</h3>
                   {current && (
@@ -234,8 +238,8 @@ export function TeacherSession({
                         {current.lock_reason && <span>Причина фиксации: {current.lock_reason}</span>}
                       </div>
                       <div className="teacher-actions">
-                        <button className="teacher-button teacher-button--primary" disabled={pending} onClick={() => queueAction(() => api.finishEntry(session.id, current.id))}>Готово</button>
-                        <button className="teacher-button" disabled={pending} onClick={() => queueAction(() => api.skipEntry(session.id, current.id))}>Пропустить</button>
+                        <button className="teacher-button teacher-button--primary" disabled={pending} onClick={() => queueAction(() => api.finishEntry(session.id, current.id), `Готово: ${current.student_name}`)}>Готово</button>
+                        <button className="teacher-button" disabled={pending} onClick={() => queueAction(() => api.skipEntry(session.id, current.id), `Пропущен: ${current.student_name}`)}>Пропустить</button>
                       </div>
                     </>
                   )}
@@ -251,11 +255,11 @@ export function TeacherSession({
             {waiting.map((entry) => (
               <li key={entry.id}>
                 <div className="teacher-session-line">
-                  <span><strong>#{entry.position} · {entry.student_name}</strong> · {etaLabel(entry)}</span>
+                  <span><strong>#{entry.position}, {entry.student_name}</strong> — {etaLabel(entry)}</span>
                   <button
                     className="teacher-button"
                     disabled={pending || session.status === "closed" || session.status === "cancelled"}
-                    onClick={() => queueAction(() => api.removeParticipant(session.id, entry.id))}
+                    onClick={() => queueAction(() => api.removeParticipant(session.id, entry.id), `Удалён из очереди: ${entry.student_name}`)}
                   >
                     Удалить
                   </button>
@@ -276,7 +280,7 @@ export function TeacherSession({
             <form className="teacher-control teacher-actions" onSubmit={addParticipant}>
               <select value={candidateId} onChange={(e) => setCandidateId(e.target.value)} aria-label="Студент">
                 <option value="">Выберите студента</option>
-                {allStudents.map((student) => <option key={student.id} value={student.id}>{student.full_name} · {student.email}</option>)}
+                {allStudents.map((student) => <option key={student.id} value={student.id}>{student.full_name} ({student.email})</option>)}
               </select>
               <button className="teacher-button teacher-button--primary" disabled={pending || !candidateId}>Добавить в конец</button>
             </form>
@@ -288,7 +292,7 @@ export function TeacherSession({
           <ul className="teacher-list">
             {history.map((entry) => (
               <li key={entry.id}>
-                <strong>{entry.student_name}</strong> · {entry.status}
+                <strong>{entry.student_name}</strong> — {entry.status}
                 <div className="teacher-reasons">
                   {entry.lock_reason && <span>Причина фиксации: {entry.lock_reason}</span>}
                   {entry.absence_reason && <span>Причина отказа: {entry.absence_reason}</span>}

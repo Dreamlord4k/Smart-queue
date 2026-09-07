@@ -1,20 +1,14 @@
+/* Кабинет преподавателя — Material 3 Expressive на токенах theme.css.
+   Классы стабильны, значения — только переменные, визуал собран из ролей. */
+
 @import "../../theme.css";
 
-:root {
-  color: var(--color-ink);
-  background: var(--color-bg);
-  font-family: var(--font-stack);
-}
-
-body {
-  margin: 0;
-  background: var(--color-bg);
-}
-
 .teacher-page {
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: 32px clamp(16px, 4vw, 56px) 56px;
-  color: var(--color-ink);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  font-family: var(--font-family);
 }
 
 .teacher-shell {
@@ -36,37 +30,44 @@ body {
 .teacher-eyebrow {
   margin: 0 0 5px;
   color: var(--color-primary);
-  font-weight: 800;
+  font-weight: var(--font-display-weight);
 }
 
 .teacher-title {
   margin: 0;
   font-size: clamp(28px, 4vw, 42px);
+  font-weight: var(--font-display-weight);
+  line-height: 1.15;
 }
 
 .teacher-muted {
-  color: var(--color-muted);
+  color: var(--color-on-surface-variant);
 }
 
 .teacher-button {
-  padding: 10px 16px;
-  color: #174477;
-  background: var(--color-primary-soft);
+  padding: 12px 20px;
+  color: var(--color-on-secondary-container);
+  background: var(--color-secondary-container);
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--radius-pill);
   font: inherit;
-  font-weight: 750;
+  font-weight: var(--font-label-weight);
   cursor: pointer;
+  transition: transform 150ms var(--ease-standard);
+}
+
+.teacher-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .teacher-button--primary {
-  color: #fff;
+  color: var(--color-on-primary);
   background: var(--color-primary);
 }
 
 .teacher-button--danger {
-  color: #fff;
-  background: var(--color-danger);
+  color: var(--color-on-error);
+  background: var(--color-error);
 }
 
 .teacher-button:disabled {
@@ -78,8 +79,9 @@ body {
 .teacher-card,
 .teacher-channel,
 .teacher-report {
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
 
@@ -90,6 +92,10 @@ body {
 
 .teacher-section {
   margin-top: 30px;
+}
+
+.teacher-section h2 {
+  font-weight: var(--font-headline-weight);
 }
 
 .teacher-grid,
@@ -111,12 +117,12 @@ body {
 
 .teacher-badge {
   display: inline-flex;
-  padding: 5px 10px;
-  border-radius: 999px;
-  color: #24558b;
-  background: var(--color-primary-soft);
-  font-size: 13px;
-  font-weight: 750;
+  padding: 5px 12px;
+  border-radius: var(--radius-chip);
+  color: var(--color-on-secondary-container);
+  background: var(--color-secondary-container);
+  font-size: var(--font-label-size);
+  font-weight: var(--font-label-weight);
 }
 
 .teacher-form__grid {
@@ -129,8 +135,8 @@ body {
 .teacher-control label > span {
   display: block;
   margin-bottom: 6px;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: var(--font-label-size);
+  font-weight: var(--font-label-weight);
 }
 
 .teacher-form input:not([type="checkbox"]),
@@ -139,19 +145,28 @@ body {
 .teacher-control select {
   width: 100%;
   box-sizing: border-box;
-  padding: 11px 13px;
-  color: var(--color-ink);
-  background: var(--color-field);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  padding: 12px 20px;
+  color: var(--color-on-surface);
+  background: var(--color-surface-variant);
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
   font: inherit;
+  transition: border-color 150ms var(--ease-standard);
+}
+
+.teacher-form input:not([type="checkbox"]):focus,
+.teacher-form select:focus,
+.teacher-control input:focus,
+.teacher-control select:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 .teacher-form fieldset {
   margin: 18px 0;
   padding: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-card);
 }
 
 .teacher-checks {
@@ -174,17 +189,25 @@ body {
 
 .teacher-list li {
   padding: 13px 15px;
-  background: var(--color-surface);
-  border-radius: 15px;
-  box-shadow: var(--shadow-soft);
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 .teacher-reasons {
   display: grid;
   gap: 4px;
   margin-top: 8px;
-  color: var(--color-faint);
-  font-size: 14px;
+  color: var(--color-on-surface-variant);
+  font-size: var(--font-body-size);
+}
+
+.teacher-notice {
+  padding: 12px 18px;
+  color: var(--color-on-primary-container);
+  background: var(--color-primary-container);
+  border-radius: var(--radius-chip);
 }
 
 .teacher-report {
@@ -198,18 +221,25 @@ body {
 .teacher-report strong {
   display: block;
   margin-top: 5px;
-  font-size: 24px;
+  font-size: var(--font-display-size);
+  font-weight: var(--font-display-weight);
 }
 
 .teacher-error {
-  padding: 12px 15px;
-  color: var(--color-danger-ink);
-  background: var(--color-danger-soft);
-  border-radius: 14px;
+  padding: 12px 18px;
+  color: var(--color-on-error);
+  background: var(--color-error);
+  border-radius: var(--radius-chip);
 }
 
 @media (max-width: 640px) {
   .teacher-page {
     padding-top: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teacher-button {
+    transition: none;
   }
 }
