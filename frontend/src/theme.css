@@ -141,6 +141,11 @@
 
 /* Корень приложения: базовый фон и шрифт для всех экранов. */
 
+body {
+  margin: 0;
+  background: var(--color-surface);
+}
+
 .app-root {
   min-height: 100dvh;
   font-family: var(--font-family);
@@ -209,6 +214,10 @@
 
 .theme-toggle[aria-checked="true"] .theme-toggle__knob::after {
   transform: translateX(16px);
+}
+
+.theme-toggle__label {
+  white-space: nowrap;
 }
 
 /* Студенческие очереди («Мои очереди»). */

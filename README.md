@@ -1,206 +1,155 @@
-# Умная очередь на сдачу лабораторных и экзаменов
+# Умная очередь
 
-Веб-сервис для вуза: преподаватель создаёт сессию приёма и ведёт очередь,
-студент видит позицию и расчётное время (ETA), получает уведомления в Telegram.
-Подробности продукта — `PRODUCT.md`, техническая спецификация — `docs/TECH_SPEC.md`,
-план этапов — `PLAN.md`, декомпозиция задач — `TASKS.md`.
+Живая очередь на сдачу лабораторных и экзаменов без толпы под дверью.
+Преподаватель ведёт приём одной кнопкой, студент видит свою позицию
+и время-окно, а не «ждите, вас позовут». Для студентов и преподавателей
+ИРИТ-РТФ: часы ожидания у аудитории превращаются в точный ETA и три
+Telegram-уведомления — «скоро», «подходите», «заходите».
 
-## Требования
+## Что реализовано
 
-- Docker и Docker Compose.
-- Для frontend-проверок отдельно: Node.js 22 и npm.
+Всё из `TASKS.md` (T-001–T-014, все DONE):
 
-## Быстрый старт
+- **Аккаунты** — регистрация/логин, JWT access+refresh, роли студент/преподаватель, группы, удаление профиля.
+- **Сессии** — создание с мультивыбором групп и студентов, очередь сразу по алфавиту; дашборд преподавателя; старт/пауза/закрытие/отмена, длительность на лету, добавление и удаление участников, заморозка списка.
+- **Очереди студента** — «Мои очереди», отказ от сессии с причиной, self-reorder только своей карточки, фиксация места с `lock_reason`, завершение и пропуск преподавателем, несколько параллельных каналов (`capacity`).
+- **ETA/EMA** — скользящее среднее фактического времени (`alpha=0.3`), дисперсия, жадный пересчёт по каналам, диапазон вместо точной цифры.
+- **Отчёты** — принято/пропущено, средняя длительность, плановое vs фактическое время, средняя ошибка ETA.
+- **Реалтайм** — Redis pub/sub (`session:{id}`), WebSocket, fallback-опрос каждые 5 секунд.
+- **Telegram** — привязка одноразовым кодом, webhook с секретом, три уведомления (мягкое/буфер/финал), дедупликация, локально — long polling.
+- **CI** — GitHub Actions на push/PR в `main`: миграции, pytest, smoke всего контура, тесты и сборка фронта.
+
+Подробности: `PRODUCT.md`, `docs/TECH_SPEC.md`, `PLAN.md`, `TASKS.md`.
+
+## Свои секреты
 
 ```bash
 cp .env.example .env
+openssl rand -hex 32
+```
+
+Сгенерированную строку впишите в `.env`:
+
+```bash
+POSTGRES_PASSWORD=<случайный пароль>
+JWT_SECRET=<вывод openssl rand -hex 32>
+```
+
+- `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` нужны только для
+глобального запуска с настоящим ботом; локально оставьте пустыми.
+- Реальные значения — только в локальном `.env`, он не коммитится.
+
+## Запуск локально
+
+```bash
 docker compose up --build
 ```
 
-- Единая точка входа (frontend): http://localhost
-- API через nginx: http://localhost/api
-- WebSocket через nginx: `ws://localhost/ws/sessions/<id>`
-- Readiness: `GET http://localhost/health` проверяет backend, Postgres и Redis.
-
-Порты 5173 и 8000 также опубликованы для локальной диагностики, но приложение
-по умолчанию обращается к API через nginx.
-
-Остановка с удалением данных:
-
-```bash
-docker compose down -v
-```
-
-## Порты
-
-| Сервис   | Порт по умолчанию | Переменная     |
-|----------|-------------------|----------------|
-| Frontend | 5173              | `FRONTEND_PORT`|
-| Backend  | 8000              | `BACKEND_PORT` |
-| Nginx HTTP | 80              | `NGINX_HTTP_PORT` |
-| Nginx HTTPS | 443            | `NGINX_HTTPS_PORT` |
-| Postgres | внутренний 5432   | —              |
-| Redis    | внутренний 6379   | —              |
-
-Пример запуска backend на другом порту (порт 8000 уже занят):
-
-```bash
-BACKEND_PORT=18000 docker compose up --build backend
-```
-
-## Миграции базы
-
-При старте backend-контейнер автоматически применяет все миграции
-(`alembic upgrade head`). Вручную — так:
+- Приложение: http://localhost (nginx → frontend + API)
+- Напрямую: frontend http://localhost:5173, API http://localhost:8000
+- Health: `curl http://localhost/health`
+- Порт backend меняется так: `BACKEND_PORT=18000 docker compose up --build backend`
+- Миграции применяются сами при старте backend. Вручную:
 
 ```bash
 docker compose exec backend alembic -c /workspace/backend/alembic.ini upgrade head
 ```
 
-## Backend-тесты
+Остановка с удалением данных: `docker compose down -v`
 
-Выполняются в backend-контейнере. Для demo-тестов каталог `scripts` монтируется
-отдельно, потому что его включение в production-образ относится к T-014:
-
-```bash
-docker compose run --rm \
-  -v "$PWD/scripts:/workspace/scripts:ro" \
-  backend python -m pytest -q -p no:cacheprovider /tests
-```
-
-Ожидается **56 passed**, включая инфраструктурные проверки и сквозной
-синтетический сценарий.
-
-## Frontend-проверки
+Демо с телефона в той же сети — в `.env`:
 
 ```bash
-cd frontend
-npm ci
-npm test -- --run
-npm run build
-```
-
-## Запуск по локальной сети (демо с телефона)
-
-`.env.example` уже содержит подсказку: замените `192.168.1.10` на IP машины
-с Docker и перезапустите compose.
-
-```bash
-VITE_API_BASE_URL=http://192.168.1.10/api
 CORS_ORIGINS=http://192.168.1.10
+VITE_API_BASE_URL=http://192.168.1.10/api
 PUBLIC_BASE_URL=http://192.168.1.10
 ```
 
-- `VITE_API_BASE_URL` — адрес backend API, который вшит во frontend при сборке.
-- `CORS_ORIGINS` — адрес frontend, с которого backend разрешает запросы.
-- После смены переменных пересоберите frontend: `docker compose up --build`.
+## Запуск глобально (домен + HTTPS)
 
-## Telegram в локальной разработке
-
-Bot worker использует те же Postgres и Redis, что backend, и работает через
-Telegram long polling. Токен задаётся только в локальном `.env`:
+Направьте A-запись домена на сервер (регистратор или DuckDNS),
+откройте порты 80/443 и заполните в `.env`:
 
 ```bash
+DOMAIN=queue.emka.lol
+LETSENCRYPT_EMAIL=admin@queue.emka.lol
+PUBLIC_BASE_URL=https://queue.emka.lol
+CORS_ORIGINS=https://queue.emka.lol
+VITE_API_BASE_URL=https://queue.emka.lol/api
 TELEGRAM_BOT_TOKEN=<токен от BotFather>
 TELEGRAM_BOT_USERNAME=<username без @>
+TELEGRAM_WEBHOOK_SECRET=<случайная строка>
 ```
 
-Файл `.env` не должен попадать в коммиты. Если токен пуст, контейнер остаётся запущенным, но
-опрос Telegram отключён; это позволяет поднять весь контур одной командой без
-публикации секрета. Webhook для локальной разработки не требуется.
-
-## Публичный HTTPS и Let's Encrypt
-
-Перед выпуском сертификата направьте DNS-запись домена на сервер и откройте
-входящие порты 80/443. Затем заполните в `.env`:
-
-```bash
-DOMAIN=queue.example.edu
-LETSENCRYPT_EMAIL=admin@example.edu
-PUBLIC_BASE_URL=https://queue.example.edu
-CORS_ORIGINS=https://queue.example.edu
-VITE_API_BASE_URL=https://queue.example.edu/api
-```
-
-Первичный выпуск выполняется из корня репозитория. Скрипт сначала поднимает
-HTTP-конфигурацию для ACME challenge, получает сертификат и переключает nginx
-на TLS:
+Выпуск сертификата и переход nginx на TLS:
 
 ```bash
 ./scripts/deploy/issue_certificate.sh
 ```
 
-Проверить обе конфигурации без запуска сервисов:
+Проверка конфигов без запуска:
 
 ```bash
 docker compose config --quiet
-docker compose -f docker-compose.yml \
-  -f scripts/deploy/docker-compose.https.yml config --quiet
+docker compose -f docker-compose.yml -f scripts/deploy/docker-compose.https.yml config --quiet
 ```
 
-Для автоматического обновления запускайте скрипт ежедневно через cron или
-systemd timer; Certbot обновит сертификат только при приближении срока и после
-проверки nginx перечитает файлы:
+Обновление сертификата по cron:
 
 ```cron
 17 3 * * * cd /srv/smart-queue && ./scripts/deploy/renew_certificate.sh
 ```
 
-## CI
+Webhook Telegram (секрет сверяется с заголовком `X-Telegram-Bot-Api-Secret-Token`):
 
-GitHub Actions на каждый push и Pull Request в `main` устанавливает зависимости,
-проверяет обе compose-конфигурации, применяет миграции, запускает полный набор
-backend-тестов из `tests/` и smoke-прогон всего контура через nginx (health, API,
-frontend и WebSocket upgrade). Отдельный job запускает frontend-тесты и
-production-сборку. Это тот же набор обязательных проверок, который описан выше
-для локального запуска.
+```bash
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d url=https://queue.emka.lol/telegram/webhook \
+  -d secret_token=<TELEGRAM_WEBHOOK_SECRET>
+```
 
-## Воспроизводимый демо-сценарий
+Локально webhook не нужен — бот работает в long polling, без токена опрос отключён.
 
-Генератор создаёт только синтетические данные в namespace `demo`: две группы,
-преподавателя, десять студентов и две сессии одного дня с общими участниками.
-У сессий разные `capacity`: 1 и 2. Повторный запуск сначала удаляет только
-собственные demo-аккаунты через API и создаёт тот же изолированный набор заново.
+## Тесты
 
-Для безопасного fake Telegram-прогона остановите bot worker: сценарий читает
-настоящие realtime-события Redis, но передаёт их в память fake-транспорту и не
-обращается к Telegram API.
+Backend (в контейнере, всего 50+):
+
+```bash
+docker compose run --rm -v "$PWD/scripts:/workspace/scripts:ro" \
+  backend python -m pytest -q -p no:cacheprovider /tests
+```
+
+Папки: `auth`, `sessions`, `groups`, `queue`, `notifications`, `realtime`, `infra`, `demo`.
+
+Фронт:
+
+```bash
+cd frontend && npm ci && npm test -- --run && npm run build
+```
+
+## Как увидеть живьём
+
+Синтетика (2 группы, 10 студентов, 2 сессии; логин `demo.t013.demo.student01@example.com`, пароль `Demo-T013-Password!`):
 
 ```bash
 docker compose up -d postgres redis backend frontend
 docker compose stop bot
 mkdir -p /tmp/smart-queue-demo
-docker compose run --rm --no-deps \
-  -v "$PWD/scripts:/workspace/scripts:ro" \
-  -v /tmp/smart-queue-demo:/demo \
-  backend python /workspace/scripts/generate_demo_data.py --api-url http://backend:8000
-docker compose run --rm --no-deps \
-  -v "$PWD/scripts:/workspace/scripts:ro" \
-  -v /tmp/smart-queue-demo:/demo \
-  backend python /workspace/scripts/run_demo_scenario.py
+docker compose run --rm --no-deps -v "$PWD/scripts:/workspace/scripts:ro" \
+  -v /tmp/smart-queue-demo:/demo backend \
+  python /workspace/scripts/generate_demo_data.py --api-url http://backend:8000
+docker compose run --rm --no-deps -v "$PWD/scripts:/workspace/scripts:ro" \
+  -v /tmp/smart-queue-demo:/demo backend \
+  python /workspace/scripts/run_demo_scenario.py
 ```
 
-Сценарий автоматически выполняет через публичный API:
+Сценарий ставит пять `✓`: отказ, reorder + lock, freeze, `done`/`skip` с пересчётом, отчёты. Без внешней отправки: realtime читается из Redis, Telegram идёт в fake-транспорт (29 сообщений, 0 запросов наружу).
 
-1. отказ с отдельным `absence_reason` и проверку независимости второй очереди;
-2. self-reorder и фиксацию с отдельным `lock_reason`;
-3. заморозку и запуск обеих сессий;
-4. `done`/`skip` со случайными короткими задержками, пересчёт EMA/ETA и каналов;
-5. закрытие сессий и формирование отчётов «до/после».
+Вручную в двух окнах (студент + преподаватель):
 
-В консоли должны появиться пять строк с `✓`, включая подтверждение
-`capacity=1`, `capacity=2`, realtime и всех трёх Telegram-триггеров. Для
-мгновенного технического прогона добавьте сценарию `--delay-scale 0`.
-
-Учётные записи синтетические. Преподаватель:
-`demo.t013.demo.teacher@example.com`; студенты:
-`demo.t013.demo.student01@example.com` … `student10@example.com`.
-Общий пароль: `Demo-T013-Password!`.
-
-## Структура репозитория
-
-- `backend/` — FastAPI: модели, маршруты `/auth`, `/sessions`, очереди, ETA.
-- `frontend/` — React SPA (Vite): экраны студента и преподавателя.
-- `scripts/` — воспроизводимый генератор и сквозной API-сценарий.
-- `tests/` — backend-тесты, включая demo-сценарий без внешней отправки.
-- `docs/` — спецификация и отчёты исполнителей (`docs/agent/tasks/<ID>/`).
+- **ETA** — откройте «Мои очереди» в двух окнах, нажмите «Завершить текущую»: позиции и окна времени пересчитаются сразу в обоих.
+- **Фиксация** — студент ставит чек-марк с причиной, карточка блокируется для перестановки.
+- **Freeze** — после «Заморозить список» drag-and-drop отклоняется сервером.
+- **Done/skip** — канал освобождается, следующий вызывается автоматически, ETA пересчитывается при `capacity=2`.
+- **Отчёт** — после «Закрыть сессию»: принято/пропущено, план vs факт, ошибка ETA.
+- **Realtime** — события прилетают по WebSocket; при обрыве — опрос каждые 5 секунд.
