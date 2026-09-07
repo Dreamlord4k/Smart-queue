@@ -179,6 +179,7 @@ def test_queue_state_exposes_current_channel_to_teacher(
 
     assert response.status_code == 200
     assert response.json()["entries"][0]["channel"] == 1
+    assert response.json()["entries"][0]["called_at"] is not None
 
 
 def test_done_rejects_called_entry_outside_active_session(

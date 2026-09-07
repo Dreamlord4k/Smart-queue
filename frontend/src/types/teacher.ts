@@ -53,6 +53,7 @@ export interface QueueEntryState {
   position: number;
   status: QueueStatus;
   channel: number | null;
+  called_at: string | null;
   locked: boolean;
   lock_reason: string | null;
   absence_reason: string | null;

@@ -80,9 +80,52 @@
   justify-content: flex-start;
 }
 
+.teacher-order-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .teacher-channel-actions .teacher-button {
   flex: 1 1 120px;
   min-width: 0;
+}
+
+.teacher-reception-timer {
+  position: relative;
+  isolation: isolate;
+  width: fit-content;
+  margin: 14px 0;
+  padding: 8px 14px;
+  overflow: hidden;
+  color: var(--color-on-surface);
+  background: linear-gradient(90deg, var(--color-primary), #ff7f6e);
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-label-weight);
+}
+
+.teacher-reception-timer::before {
+  position: absolute;
+  z-index: -1;
+  inset: 2px;
+  content: "";
+  background: var(--color-primary-container);
+  border-radius: inherit;
+  transform: scaleX(var(--timer-remaining));
+  transform-origin: left;
+  transition: transform 1s linear;
+}
+
+.teacher-reception-timer--overtime {
+  color: var(--color-on-error);
+  background: var(--color-error);
+}
+
+.teacher-reception-timer--overtime::before {
+  display: none;
 }
 
 .teacher-panel,

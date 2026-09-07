@@ -21,6 +21,7 @@ export interface TeacherApi {
     patch: { status?: SessionStatus; duration_default?: number },
   ): Promise<SessionUpdate>;
   freezeSession(sessionId: string): Promise<{ id: string; frozen: boolean }>;
+  unfreezeSession(sessionId: string): Promise<{ id: string; frozen: boolean }>;
   finishEntry(sessionId: string, entryId: string): Promise<unknown>;
   skipEntry(sessionId: string, entryId: string): Promise<unknown>;
   addParticipant(sessionId: string, studentId: string): Promise<unknown>;
@@ -76,6 +77,10 @@ export function createTeacherApi(
       }),
     freezeSession: (sessionId) =>
       request<{ id: string; frozen: boolean }>(`/sessions/${sessionId}/freeze`, {
+        method: "POST",
+      }),
+    unfreezeSession: (sessionId) =>
+      request<{ id: string; frozen: boolean }>(`/sessions/${sessionId}/unfreeze`, {
         method: "POST",
       }),
     finishEntry: (sessionId, entryId) =>

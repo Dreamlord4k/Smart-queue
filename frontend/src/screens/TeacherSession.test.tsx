@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { QueueState, SessionReport, SessionSummary } from "../types/teacher";
-import { TeacherSession } from "./TeacherSession";
+import { ReceptionTimer, receptionTimerState, TeacherSession } from "./TeacherSession";
 
 const session: SessionSummary = {
   id: "session-1",
@@ -28,6 +28,7 @@ const queue: QueueState = {
       position: 1,
       status: "called",
       channel: 1,
+      called_at: "2026-09-08T09:55:00Z",
       locked: false,
       lock_reason: null,
       absence_reason: null,
@@ -41,6 +42,7 @@ const queue: QueueState = {
       position: 2,
       status: "waiting",
       channel: null,
+      called_at: null,
       locked: true,
       lock_reason: "Договорился о времени",
       absence_reason: null,
@@ -54,6 +56,7 @@ const queue: QueueState = {
       position: 3,
       status: "absent",
       channel: null,
+      called_at: null,
       locked: false,
       lock_reason: null,
       absence_reason: "Другая встреча",
@@ -78,6 +81,8 @@ describe("TeacherSession", () => {
     expect(html).toContain("Причина фиксации: Договорился о времени");
     expect(html).toContain("Причина отказа: Другая встреча");
     expect(html).toContain("Добавить участника");
+    expect(html).toContain("Примерно:");
+    expect(html).not.toContain("ETA:");
     expect(html.toLowerCase()).not.toContain("drag");
   });
 
@@ -105,6 +110,50 @@ describe("TeacherSession", () => {
     expect(html).toContain("Пропущено");
     expect(html).toContain("Плановое время");
     expect(html).toContain("Фактическое время");
-    expect(html).toContain("Средняя ошибка ETA");
+    expect(html).toContain("Средняя ошибка прогноза");
+    expect(html).not.toContain("Средняя ошибка ETA");
+  });
+
+  it("показывает разморозку только для замороженного порядка", () => {
+    const frozen = renderToStaticMarkup(
+      <TeacherSession accessToken="token" session={session} initialQueue={queue} />,
+    );
+    const open = renderToStaticMarkup(
+      <TeacherSession
+        accessToken="token"
+        session={{ ...session, frozen: false }}
+        initialQueue={queue}
+      />,
+    );
+
+    expect(frozen).toContain("Разморозить");
+    expect(open).toContain("Порядок открыт");
+    expect(open).not.toContain("Разморозить");
+  });
+});
+
+describe("таймер приёма", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("считает остаток от called_at и длительности сессии", () => {
+    const now = new Date("2026-09-08T10:00:00Z").getTime();
+
+    expect(receptionTimerState("2026-09-08T09:55:00Z", 15, now)).toEqual({
+      label: "10:00 осталось",
+      overtime: false,
+      remainingPercent: 100 * (10 / 15),
+    });
+  });
+
+  it("после нуля продолжает считать сверх красным", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-08T10:17:31Z"));
+
+    const html = renderToStaticMarkup(
+      <ReceptionTimer calledAt="2026-09-08T10:00:00Z" durationMinutes={15} />,
+    );
+
+    expect(html).toContain("+02:31 сверх");
+    expect(html).toContain("teacher-reception-timer--overtime");
   });
 });
