@@ -237,7 +237,7 @@ export function TeacherSession({
                         <span>Фиксация: {current.locked ? "да" : "нет"}</span>
                         {current.lock_reason && <span>Причина фиксации: {current.lock_reason}</span>}
                       </div>
-                      <div className="teacher-actions">
+                      <div className="teacher-actions teacher-channel-actions">
                         <button className="teacher-button teacher-button--primary" disabled={pending} onClick={() => queueAction(() => api.finishEntry(session.id, current.id), `Готово: ${current.student_name}`)}>Готово</button>
                         <button className="teacher-button" disabled={pending} onClick={() => queueAction(() => api.skipEntry(session.id, current.id), `Пропущен: ${current.student_name}`)}>Пропустить</button>
                       </div>

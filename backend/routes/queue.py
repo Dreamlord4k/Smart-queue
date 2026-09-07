@@ -399,9 +399,13 @@ def reorder_own_entry(
             status_code=409, detail="Запись уже не входит в активную очередь"
         )
 
-    reordered = [candidate for candidate in active_entries if candidate.id != source.id]
+    movable_entries = [
+        candidate
+        for candidate in active_entries
+        if not candidate.locked and candidate.id != source.id
+    ]
     if payload.target_entry_id is None:
-        insert_at = len(reordered)
+        insert_at = len(movable_entries)
     else:
         if payload.target_entry_id == source.id:
             raise HTTPException(
@@ -410,7 +414,7 @@ def reorder_own_entry(
         target = next(
             (
                 candidate
-                for candidate in reordered
+                for candidate in active_entries
                 if candidate.id == payload.target_entry_id
             ),
             None,
@@ -426,17 +430,17 @@ def reorder_own_entry(
             raise HTTPException(
                 status_code=409, detail="Целевое место зафиксировано"
             )
-        target_index = reordered.index(target)
+        target_index = movable_entries.index(target)
         insert_at = target_index + (
             1 if payload.placement == QueuePlacement.AFTER else 0
         )
 
-    reordered.insert(insert_at, source)
-    for position, candidate in enumerate(reordered, start=1):
-        if candidate.locked and candidate.position != position:
-            raise HTTPException(
-                status_code=409, detail="Перестановка сдвинет зафиксированное место"
-            )
+    movable_entries.insert(insert_at, source)
+    movable = iter(movable_entries)
+    reordered = [
+        candidate if candidate.locked else next(movable)
+        for candidate in active_entries
+    ]
 
     old_position = source.position
     new_position = reordered.index(source) + 1

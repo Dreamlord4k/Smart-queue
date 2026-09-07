@@ -59,12 +59,18 @@ export function moveOwnEntry(
     .sort((left, right) => left.position - right.position);
   const source = active.find((entry) => entry.id === sourceId);
   const target = active.find((entry) => entry.id === targetId);
-  if (!source || !target || source.id === target.id) return entries;
+  if (!source || !target || source.id === target.id || source.locked || target.locked) {
+    return entries;
+  }
 
-  const reordered = active.filter((entry) => entry.id !== source.id);
-  const targetIndex = reordered.findIndex((entry) => entry.id === target.id);
-  reordered.splice(targetIndex + (placement === "after" ? 1 : 0), 0, source);
-  const normalized = reordered.map((entry, index) => ({ ...entry, position: index + 1 }));
+  const movable = active.filter((entry) => !entry.locked && entry.id !== source.id);
+  const targetIndex = movable.findIndex((entry) => entry.id === target.id);
+  movable.splice(targetIndex + (placement === "after" ? 1 : 0), 0, source);
+  let movableIndex = 0;
+  const normalized = active.map((entry, index) => ({
+    ...(entry.locked ? entry : movable[movableIndex++]),
+    position: index + 1,
+  }));
   const history = entries.filter(
     (entry) => entry.status !== "waiting" && entry.status !== "called",
   );
@@ -80,6 +86,10 @@ export async function reorderWithRollback(options: {
   reorder: () => Promise<void>;
   reload: () => Promise<StudentQueueState>;
 }): Promise<void> {
+  const snapshot = {
+    ...options.queue,
+    entries: options.queue.entries.map((entry) => ({ ...entry })),
+  };
   options.setQueue({
     ...options.queue,
     entries: moveOwnEntry(
@@ -93,9 +103,87 @@ export async function reorderWithRollback(options: {
     await options.reorder();
     options.setQueue(await options.reload());
   } catch (reason) {
-    options.setQueue(options.queue);
+    options.setQueue(snapshot);
     throw reason;
   }
+}
+
+export function dragAutoScrollDelta(
+  clientY: number,
+  viewportHeight: number,
+  edgeSize = 72,
+  maxStep = 32,
+): number {
+  if (clientY < edgeSize) {
+    return -Math.ceil(((edgeSize - Math.max(clientY, 0)) / edgeSize) * maxStep);
+  }
+  if (clientY > viewportHeight - edgeSize) {
+    return Math.ceil(
+      ((Math.min(clientY, viewportHeight) - (viewportHeight - edgeSize)) / edgeSize) * maxStep,
+    );
+  }
+  return 0;
+}
+
+export function placementForDrop(
+  source: StudentQueueEntry,
+  target: StudentQueueEntry,
+): QueuePlacement {
+  return source.position > target.position ? "before" : "after";
+}
+
+interface LockReasonDrawerProps {
+  open: boolean;
+  reason: string;
+  pending: boolean;
+  onReasonChange: (reason: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+}
+
+export function LockReasonDrawer({
+  open,
+  reason,
+  pending,
+  onReasonChange,
+  onClose,
+  onSave,
+}: LockReasonDrawerProps) {
+  if (!open) return null;
+  return (
+    <div className="student-drawer-backdrop" onClick={onClose}>
+      <aside
+        aria-label="Причина фиксации"
+        aria-modal="true"
+        className="student-lock-drawer"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+      >
+        <div className="student-line">
+          <h2>Фиксация места</h2>
+          <button className="student-button" type="button" onClick={onClose}>Закрыть</button>
+        </div>
+        <label className="student-field">
+          <span>Причина — необязательно</span>
+          <textarea
+            autoFocus
+            className="student-textarea"
+            value={reason}
+            onChange={(event) => onReasonChange(event.target.value)}
+            placeholder="Например, пересечение с другой парой"
+          />
+        </label>
+        <button
+          className="student-button student-button--primary"
+          disabled={pending}
+          type="button"
+          onClick={onSave}
+        >
+          Сохранить фиксацию
+        </button>
+      </aside>
+    </div>
+  );
 }
 
 function etaLabel(entry: StudentQueueEntry): string {
@@ -123,6 +211,7 @@ export function Queue({
   const [draggingEntryId, setDraggingEntryId] = useState<string | null>(null);
   const [lockEnabled, setLockEnabled] = useState(false);
   const [lockReason, setLockReason] = useState("");
+  const [lockEditorOpen, setLockEditorOpen] = useState(false);
   const [absenceReason, setAbsenceReason] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -154,12 +243,18 @@ export function Queue({
   const ownIndex = ownEntry
     ? activeEntries.findIndex((entry) => entry.id === ownEntry.id)
     : -1;
+  const movableWaiting = activeEntries.filter(
+    (entry) => entry.status === "waiting" && !entry.locked,
+  );
+  const ownMovableIndex = ownEntry
+    ? movableWaiting.findIndex((entry) => entry.id === ownEntry.id)
+    : -1;
 
   useEffect(() => {
     if (!ownEntry) return;
     setLockEnabled(ownEntry.locked);
-    if (ownEntry.lock_reason !== null) setLockReason(ownEntry.lock_reason);
-    if (ownEntry.absence_reason !== null) setAbsenceReason(ownEntry.absence_reason);
+    setLockReason(ownEntry.lock_reason ?? "");
+    setAbsenceReason(ownEntry.absence_reason ?? "");
   }, [ownEntry]);
 
   async function run(action: () => Promise<void>, successMessage?: string) {
@@ -176,8 +271,7 @@ export function Queue({
     }
   }
 
-  function saveLock(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function persistLock() {
     if (!ownEntry) return;
     const locked = lockEnabled;
     void run(async () => {
@@ -189,7 +283,13 @@ export function Queue({
       );
       setLockReason(result.lock_reason ?? "");
       await loadQueue();
+      setLockEditorOpen(false);
     }, locked ? "Место зафиксировано" : "Фиксация снята — запись снова можно двигать");
+  }
+
+  function saveLock(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    persistLock();
   }
 
   function markAbsent() {
@@ -210,12 +310,11 @@ export function Queue({
       !source ||
       !canDragEntry(source, currentStudentId, queue.frozen) ||
       target.status !== "waiting" ||
+      target.locked ||
       source.id === target.id
     ) return;
 
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const placement: QueuePlacement =
-      event.clientY >= bounds.top + bounds.height / 2 ? "after" : "before";
+    const placement = placementForDrop(source, target);
     void run(async () => {
       await reorderWithRollback({
         queue,
@@ -224,6 +323,28 @@ export function Queue({
         placement,
         setQueue,
         reorder: () => api.reorder(sessionId, source.id, target.id, placement),
+        reload: () => api.getQueue(sessionId),
+      });
+    }, "Порядок обновлён");
+  }
+
+  function autoScrollDuringDrag(event: DragEvent<HTMLElement>) {
+    if (!draggingEntryId) return;
+    event.preventDefault();
+    const delta = dragAutoScrollDelta(event.clientY, window.innerHeight);
+    if (delta !== 0) window.scrollBy({ top: delta, behavior: "auto" });
+  }
+
+  function moveTo(target: StudentQueueEntry | undefined, placement: QueuePlacement) {
+    if (!queue || !ownEntry || !target || pending) return;
+    void run(async () => {
+      await reorderWithRollback({
+        queue,
+        sourceId: ownEntry.id,
+        targetId: target.id,
+        placement,
+        setQueue,
+        reorder: () => api.reorder(sessionId, ownEntry.id, target.id, placement),
         reload: () => api.getQueue(sessionId),
       });
     }, "Порядок обновлён");
@@ -254,7 +375,7 @@ export function Queue({
           <div className="student-grid">
             <section className="student-panel" aria-label="Участники очереди">
               <h2>Участники</h2>
-              <ul className="student-list">
+              <ul className="student-list" onDragOver={autoScrollDuringDrag}>
                 {activeEntries.map((entry) => {
                   const isOwn = entry.student_id === currentStudentId;
                   const draggable = canDragEntry(entry, currentStudentId, queue.frozen);
@@ -280,6 +401,34 @@ export function Queue({
                       </div>
                       <p className="student-muted">{etaLabel(entry)}</p>
                       {entry.locked && <span>🔒 Место зафиксировано</span>}
+                      {draggable && (
+                        <div className="student-reorder-controls" aria-label="Быстрое перемещение">
+                          <button
+                            className="student-button"
+                            disabled={pending || ownMovableIndex <= 0}
+                            type="button"
+                            onClick={() => moveTo(movableWaiting[ownMovableIndex - 1], "before")}
+                          >
+                            ↑ На позицию выше
+                          </button>
+                          <button
+                            className="student-button"
+                            disabled={pending || ownMovableIndex < 0 || ownMovableIndex >= movableWaiting.length - 1}
+                            type="button"
+                            onClick={() => moveTo(movableWaiting[ownMovableIndex + 1], "after")}
+                          >
+                            ↓ На позицию ниже
+                          </button>
+                          <button
+                            className="student-button student-button--wide"
+                            disabled={pending || ownMovableIndex <= 0}
+                            type="button"
+                            onClick={() => moveTo(movableWaiting[0], "before")}
+                          >
+                            ⇤ В начало
+                          </button>
+                        </div>
+                      )}
                     </li>
                   );
                 })}
@@ -308,23 +457,26 @@ export function Queue({
 
                   {ownEntry.status === "waiting" && (
                     <>
-                      <form onSubmit={saveLock}>
-                        <label className="student-field">
-                          <span>
-                            <input
-                              type="checkbox"
-                              checked={lockEnabled}
-                              onChange={(event) => setLockEnabled(event.target.checked)}
-                            />{" "}Зафиксировать место
-                          </span>
-                          <textarea
-                            className="student-textarea"
-                            value={lockReason}
-                            onChange={(event) => setLockReason(event.target.value)}
-                            placeholder="Причина фиксации — необязательно"
-                            disabled={!lockEnabled}
-                          />
+                      <form className="student-lock-form" onSubmit={saveLock}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={lockEnabled}
+                            onChange={(event) => {
+                              setLockEnabled(event.target.checked);
+                              setLockEditorOpen(event.target.checked);
+                            }}
+                          />{" "}Зафиксировать место
                         </label>
+                        {lockEnabled && (
+                          <button
+                            className="student-button"
+                            type="button"
+                            onClick={() => setLockEditorOpen(true)}
+                          >
+                            {lockReason ? "Изменить причину" : "Указать причину"}
+                          </button>
+                        )}
                         <button className="student-button" disabled={pending}>
                           Сохранить фиксацию
                         </button>
@@ -358,6 +510,14 @@ export function Queue({
             </aside>
           </div>
         )}
+        <LockReasonDrawer
+          open={lockEditorOpen && lockEnabled}
+          reason={lockReason}
+          pending={pending}
+          onReasonChange={setLockReason}
+          onClose={() => setLockEditorOpen(false)}
+          onSave={persistLock}
+        />
       </div>
     </main>
   );

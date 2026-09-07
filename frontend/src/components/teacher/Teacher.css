@@ -75,6 +75,16 @@
   cursor: default;
 }
 
+.teacher-channel-actions {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.teacher-channel-actions .teacher-button {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
 .teacher-panel,
 .teacher-card,
 .teacher-channel,
@@ -235,6 +245,15 @@
 @media (max-width: 640px) {
   .teacher-page {
     padding-top: 20px;
+  }
+
+  .teacher-channel-actions {
+    align-items: stretch;
+  }
+
+  .teacher-channel-actions .teacher-button {
+    flex-basis: 100%;
+    width: 100%;
   }
 }
 
