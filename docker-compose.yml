@@ -33,6 +33,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-development-only-change-me-use-32-bytes}
       JWT_ACCESS_TTL_MINUTES: ${JWT_ACCESS_TTL_MINUTES:-15}
       JWT_REFRESH_TTL_DAYS: ${JWT_REFRESH_TTL_DAYS:-30}
+      DEMO_MODE: ${DEMO_MODE:-false}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}

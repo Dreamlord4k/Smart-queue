@@ -17,9 +17,21 @@ type FetchImpl = typeof fetch;
 export const ACCESS_TOKEN_KEY = "access_token";
 export const REFRESH_TOKEN_KEY = "refresh_token";
 
+export function preferredTokenStorage(
+  local: TokenStorage,
+  perTab: TokenStorage,
+): TokenStorage {
+  return perTab.getItem(ACCESS_TOKEN_KEY) ? perTab : local;
+}
+
 export function browserTokenStorage(): TokenStorage | null {
   if (typeof window === "undefined" || !window.localStorage) return null;
-  return window.localStorage;
+  return preferredTokenStorage(window.localStorage, window.sessionStorage);
+}
+
+export function browserDemoTokenStorage(): TokenStorage | null {
+  if (typeof window === "undefined" || !window.sessionStorage) return null;
+  return window.sessionStorage;
 }
 
 export function saveTokens(storage: TokenStorage, pair: TokenPair): void {
@@ -52,6 +64,10 @@ export function decodeRoleFromToken(token: string): UserRole | null {
 export function decodeSubjectFromToken(token: string): string | null {
   const subject = decodePayload(token)?.sub;
   return typeof subject === "string" && subject ? subject : null;
+}
+
+export function decodeDemoFromToken(token: string): boolean {
+  return decodePayload(token)?.demo === true;
 }
 
 async function errorDetail(response: Response, fallback: string): Promise<string> {

@@ -29,7 +29,9 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False
 
 
-def _create_token(user: User, token_type: str, lifetime: timedelta) -> str:
+def _create_token(
+    user: User, token_type: str, lifetime: timedelta, *, demo: bool = False
+) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user.id),
@@ -38,18 +40,21 @@ def _create_token(user: User, token_type: str, lifetime: timedelta) -> str:
         "iat": now,
         "exp": now + lifetime,
         "jti": str(uuid4()),
+        "demo": demo,
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def create_access_token(user: User) -> str:
+def create_access_token(user: User, *, demo: bool = False) -> str:
     return _create_token(
-        user, "access", timedelta(minutes=settings.access_ttl_minutes)
+        user, "access", timedelta(minutes=settings.access_ttl_minutes), demo=demo
     )
 
 
-def create_refresh_token(user: User) -> str:
-    return _create_token(user, "refresh", timedelta(days=settings.refresh_ttl_days))
+def create_refresh_token(user: User, *, demo: bool = False) -> str:
+    return _create_token(
+        user, "refresh", timedelta(days=settings.refresh_ttl_days), demo=demo
+    )
 
 
 def decode_token(token: str, expected_type: str) -> dict[str, Any]:

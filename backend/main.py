@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.auth.dependencies import engine
-from backend.config import REDIS_URL
+from backend.config import REDIS_URL, demo_mode_enabled
 from backend.routes.auth import router as auth_router
 from backend.routes.groups import router as groups_router
 from backend.routes.queue import router as queue_router
@@ -64,4 +64,8 @@ def health(response: Response) -> dict[str, object]:
     ready = all(checks.values())
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    return {"status": "ok" if ready else "unavailable", "checks": checks}
+    return {
+        "status": "ok" if ready else "unavailable",
+        "checks": checks,
+        "demo_mode": demo_mode_enabled(),
+    }

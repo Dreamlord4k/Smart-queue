@@ -12,4 +12,11 @@ describe("Settings", () => {
     expect(html).toContain("Удалить профиль навсегда");
     expect(html).toContain("disabled");
   });
+
+  it("не показывает удаление профиля в demo-сессии", () => {
+    const html = renderToStaticMarkup(<Settings accessToken="token" demoMode />);
+
+    expect(html).not.toContain("Удалить мой профиль");
+    expect(html).not.toContain("Удалить профиль навсегда");
+  });
 });

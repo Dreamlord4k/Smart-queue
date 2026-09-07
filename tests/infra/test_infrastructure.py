@@ -50,6 +50,7 @@ def test_health_reports_dependency_readiness(monkeypatch) -> None:
     assert response.json() == {
         "status": "ok",
         "checks": {"postgres": True, "redis": True},
+        "demo_mode": False,
     }
 
     monkeypatch.setattr(main, "_redis_ready", lambda: False)

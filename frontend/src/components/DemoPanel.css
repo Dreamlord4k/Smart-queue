@@ -1,0 +1,61 @@
+@import "../theme.css";
+
+.demo-panel {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  display: grid;
+  gap: 8px;
+  width: min(220px, calc(100vw - 32px));
+  box-sizing: border-box;
+  padding: 16px;
+  color: var(--color-on-surface);
+  background: color-mix(in srgb, var(--color-surface-container) 94%, transparent);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-lifted);
+  backdrop-filter: blur(14px);
+}
+
+.demo-panel p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--color-on-surface-variant);
+}
+
+.demo-panel button {
+  min-height: 40px;
+  padding: 8px 12px;
+  color: var(--color-on-primary);
+  font: inherit;
+  font-weight: var(--font-label-weight);
+  background: var(--color-primary);
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.demo-panel button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.demo-panel .demo-panel__reset {
+  color: var(--color-primary);
+  background: var(--color-primary-container);
+}
+
+@media (max-width: 640px) {
+  .demo-panel {
+    left: 8px;
+    bottom: 8px;
+    width: min(190px, calc(100vw - 16px));
+    padding: 12px;
+  }
+
+  .demo-panel__hint {
+    display: none;
+  }
+}
