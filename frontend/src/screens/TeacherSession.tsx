@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
 
 import { createTeacherApi, type TeacherApi } from "../api/teacher";
 import "../components/teacher/Teacher.css";
@@ -37,13 +44,70 @@ const statusLabels: Record<SessionStatus, string> = {
 };
 
 function etaLabel(entry: QueueEntryState): string {
-  if (!entry.eta_start || !entry.eta_end) return "ETA не рассчитан";
-  return `ETA ${formatUniversityTime(entry.eta_start)}–${formatUniversityTime(entry.eta_end)} (${UNIVERSITY_TIME_NOTE})`;
+  if (!entry.eta_start || !entry.eta_end) return "Примерно: пока не рассчитано";
+  return `Примерно: ${formatUniversityTime(entry.eta_start)}–${formatUniversityTime(entry.eta_end)} (${UNIVERSITY_TIME_NOTE})`;
 }
 
 function secondsLabel(value: number | null): string {
   if (value === null) return "—";
   return `${Math.round(value / 60)} мин`;
+}
+
+export interface ReceptionTimerState {
+  label: string;
+  overtime: boolean;
+  remainingPercent: number;
+}
+
+export function receptionTimerState(
+  calledAt: string,
+  durationMinutes: number,
+  now = Date.now(),
+): ReceptionTimerState {
+  const startedAt = new Date(calledAt).getTime();
+  const durationMs = Math.max(durationMinutes, 1) * 60_000;
+  const remainingMs = durationMs - Math.max(now - startedAt, 0);
+  const absoluteSeconds = Math.floor(Math.abs(remainingMs) / 1_000);
+  const minutes = String(Math.floor(absoluteSeconds / 60)).padStart(2, "0");
+  const seconds = String(absoluteSeconds % 60).padStart(2, "0");
+  const overtime = remainingMs < 0;
+
+  return {
+    label: overtime ? `+${minutes}:${seconds} сверх` : `${minutes}:${seconds} осталось`,
+    overtime,
+    remainingPercent: Math.max(0, Math.min(100, (remainingMs / durationMs) * 100)),
+  };
+}
+
+export function ReceptionTimer({
+  calledAt,
+  durationMinutes,
+}: {
+  calledAt: string;
+  durationMinutes: number;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const state = receptionTimerState(calledAt, durationMinutes, now);
+  const style = {
+    "--timer-remaining": state.remainingPercent / 100,
+  } as CSSProperties;
+
+  return (
+    <div
+      className={`teacher-reception-timer${state.overtime ? " teacher-reception-timer--overtime" : ""}`}
+      role="timer"
+      aria-label="Таймер приёма"
+      style={style}
+    >
+      <span>{state.label}</span>
+    </div>
+  );
 }
 
 export function TeacherSession({
@@ -132,6 +196,13 @@ export function TeacherSession({
     }, "Список заморожен — порядок больше не меняется");
   }
 
+  function unfreeze() {
+    void run(async () => {
+      const unfrozen = await api.unfreezeSession(session.id);
+      setSession((current) => ({ ...current, frozen: unfrozen.frozen }));
+    }, "Порядок снова открыт для разрешённых перестановок");
+  }
+
   function changeDuration(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void run(async () => {
@@ -177,9 +248,16 @@ export function TeacherSession({
               {formatUniversitySessionStart(session.date, session.start_time)} ({UNIVERSITY_TIME_NOTE}), аудитория {session.room}
             </p>
           </div>
-          <span className="teacher-badge">
-            {session.frozen ? "Порядок заморожен" : "Порядок открыт"}
-          </span>
+          <div className="teacher-order-state">
+            <span className="teacher-badge">
+              {session.frozen ? "Порядок заморожен" : "Порядок открыт"}
+            </span>
+            {session.frozen && (
+              <button className="teacher-button" disabled={pending} onClick={unfreeze}>
+                Разморозить
+              </button>
+            )}
+          </div>
         </header>
 
         {error && <p className="teacher-error" role="alert">{error}</p>}
@@ -240,6 +318,12 @@ export function TeacherSession({
                         <span>Фиксация: {current.locked ? "да" : "нет"}</span>
                         {current.lock_reason && <span>Причина фиксации: {current.lock_reason}</span>}
                       </div>
+                      {current.called_at && (
+                        <ReceptionTimer
+                          calledAt={current.called_at}
+                          durationMinutes={session.duration_default}
+                        />
+                      )}
                       <div className="teacher-actions teacher-channel-actions">
                         <button className="teacher-button teacher-button--primary" disabled={pending} onClick={() => queueAction(() => api.finishEntry(session.id, current.id), `Готово: ${current.student_name}`)}>Готово</button>
                         <button className="teacher-button" disabled={pending} onClick={() => queueAction(() => api.skipEntry(session.id, current.id), `Пропущен: ${current.student_name}`)}>Пропустить</button>
@@ -312,7 +396,7 @@ export function TeacherSession({
             <div>Средняя длительность<strong>{secondsLabel(report.average_service_seconds)}</strong></div>
             <div>Плановое время<strong>{secondsLabel(report.planned_duration_seconds)}</strong></div>
             <div>Фактическое время<strong>{secondsLabel(report.actual_duration_seconds)}</strong></div>
-            <div>Средняя ошибка ETA<strong>{secondsLabel(report.average_eta_error_seconds)}</strong></div>
+            <div>Средняя ошибка прогноза<strong>{secondsLabel(report.average_eta_error_seconds)}</strong></div>
           </section>
         )}
       </div>

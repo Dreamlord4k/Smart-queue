@@ -152,6 +152,8 @@ describe("Queue", () => {
     expect(html).toContain("Причина отказа — необязательно");
     expect(html).toContain("Сохранить фиксацию");
     expect(html).toContain("Отказаться от этой сессии");
+    expect(html).toContain("Примерно:");
+    expect(html).not.toContain("ETA:");
   });
 
   it("показывает причину фиксации во внепоточном боковом диалоге", () => {    const html = renderToStaticMarkup(

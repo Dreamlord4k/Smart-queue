@@ -18,6 +18,7 @@ describe("teacher API", () => {
 
     await api.updateSession("session-1", { status: "active" });
     await api.freezeSession("session-1");
+    await api.unfreezeSession("session-1");
     await api.finishEntry("session-1", "entry-1");
     await api.skipEntry("session-1", "entry-2");
     await api.addParticipant("session-1", "student-1");
@@ -26,6 +27,7 @@ describe("teacher API", () => {
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
       "https://api.example/sessions/session-1",
       "https://api.example/sessions/session-1/freeze",
+      "https://api.example/sessions/session-1/unfreeze",
       "https://api.example/sessions/session-1/queue/entry-1/done",
       "https://api.example/sessions/session-1/queue/entry-2/skip",
       "https://api.example/sessions/session-1/participants",
@@ -33,6 +35,7 @@ describe("teacher API", () => {
     ]);
     expect(fetchMock.mock.calls.map(([, init]) => init?.method)).toEqual([
       "PATCH",
+      "POST",
       "POST",
       "POST",
       "POST",

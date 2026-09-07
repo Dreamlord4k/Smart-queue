@@ -188,8 +188,8 @@ export function LockReasonDrawer({
 }
 
 function etaLabel(entry: StudentQueueEntry): string {
-  if (!entry.eta_start || !entry.eta_end) return "ETA не рассчитан";
-  return `ETA ${formatUniversityTime(entry.eta_start)}–${formatUniversityTime(entry.eta_end)} (${UNIVERSITY_TIME_NOTE})`;
+  if (!entry.eta_start || !entry.eta_end) return "Примерно: пока не рассчитано";
+  return `Примерно: ${formatUniversityTime(entry.eta_start)}–${formatUniversityTime(entry.eta_end)} (${UNIVERSITY_TIME_NOTE})`;
 }
 
 export function Queue({

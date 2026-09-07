@@ -582,3 +582,17 @@ def freeze_session(
         db.refresh(reception)
         publish_session_event(reception.id, "session.frozen")
     return FreezeResponse(id=reception.id, frozen=reception.frozen)
+
+@router.post("/{session_id}/unfreeze", response_model=FreezeResponse)
+def unfreeze_session(
+    session_id: UUID,
+    teacher: User = Depends(require_role(UserRole.TEACHER)),
+    db: DatabaseSession = Depends(get_db),
+) -> FreezeResponse:
+    reception = _owned_session(session_id, teacher, db)
+    if reception.frozen:
+        reception.frozen = False
+        db.commit()
+        db.refresh(reception)
+        publish_session_event(reception.id, "session.unfrozen")
+    return FreezeResponse(id=reception.id, frozen=reception.frozen)

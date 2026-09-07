@@ -137,7 +137,7 @@ export function MyQueues({
             <p>{card.teacher_name}, аудитория {card.room}</p>
             <p>{formatUniversitySessionStart(card.date, card.start_time)} ({UNIVERSITY_TIME_NOTE})</p>
             <p>Позиция: {card.position ?? "—"}</p>
-            <p>ETA: {formatEta(card)} ({UNIVERSITY_TIME_NOTE})</p>
+            <p>Примерно: {formatEta(card)} ({UNIVERSITY_TIME_NOTE})</p>
             <p>Статус: {statusLabels[card.status]}</p>
             {overlaps.has(card.entry_id) && (
               <p role="status" className="mq-warn">

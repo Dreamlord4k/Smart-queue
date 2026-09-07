@@ -43,6 +43,8 @@ describe("MyQueues", () => {
     expect(html).toContain("Позиция: 1");
     expect(html).toContain("Вас вызывают");
     expect(html.match(/Возможное пересечение/g)).toHaveLength(2);
+    expect(html).toContain("Примерно:");
+    expect(html).not.toContain("ETA:");
   });
 
   it("карточки и кнопка используют классы единой темы", () => {
