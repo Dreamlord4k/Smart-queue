@@ -71,11 +71,11 @@ PUBLIC_BASE_URL=http://192.168.1.10
 откройте порты 80/443 и заполните в `.env`:
 
 ```bash
-DOMAIN=queue.emka.lol
-LETSENCRYPT_EMAIL=admin@queue.emka.lol
-PUBLIC_BASE_URL=https://queue.emka.lol
-CORS_ORIGINS=https://queue.emka.lol
-VITE_API_BASE_URL=https://queue.emka.lol/api
+DOMAIN=queue.example.edu
+LETSENCRYPT_EMAIL=admin@example.edu
+PUBLIC_BASE_URL=https://queue.example.edu
+CORS_ORIGINS=https://queue.example.edu
+VITE_API_BASE_URL=https://queue.example.edu/api
 TELEGRAM_BOT_TOKEN=<токен от BotFather>
 TELEGRAM_BOT_USERNAME=<username без @>
 TELEGRAM_WEBHOOK_SECRET=<случайная строка>
@@ -104,7 +104,7 @@ Webhook Telegram (секрет сверяется с заголовком `X-Tel
 
 ```bash
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
-  -d url=https://queue.emka.lol/telegram/webhook \
+  -d url=https://queue.example.edu/telegram/webhook \
   -d secret_token=<TELEGRAM_WEBHOOK_SECRET>
 ```
 
