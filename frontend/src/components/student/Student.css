@@ -96,12 +96,26 @@
   cursor: grabbing;
 }
 
-.student-reorder-controls,
 .student-lock-form {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 12px;
+}
+
+/* Кнопки быстрого перемещения — только узкие тач-экраны.
+   На десктопе скрыты: основной способ — drag-and-drop. */
+.student-reorder-controls {
+  display: none;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+@media (max-width: 640px) and (pointer: coarse) {
+  .student-reorder-controls {
+    display: flex;
+  }
 }
 
 .student-reorder-controls .student-button {
