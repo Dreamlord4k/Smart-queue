@@ -47,4 +47,20 @@ describe("student API", () => {
     expect(fetchImpl.mock.calls[0][0]).toBe("/auth/me");
     expect(fetchImpl.mock.calls[0][1]?.method).toBe("DELETE");
   });
+
+  it("выпускает код Telegram только через авторизованный API", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(json({
+      linked: false,
+      code: "one-time",
+      expires_at: "2026-09-07T06:00:00Z",
+      deep_link: null,
+    }));
+    const api = createStudentApi("student-token", "", fetchImpl);
+
+    const state = await api.initTelegramLink();
+
+    expect(state.code).toBe("one-time");
+    expect(fetchImpl.mock.calls[0][0]).toBe("/telegram/link/init");
+    expect(fetchImpl.mock.calls[0][1]?.method).toBe("POST");
+  });
 });
