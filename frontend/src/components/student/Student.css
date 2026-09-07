@@ -1,9 +1,14 @@
+/* Студенческие экраны (очередь, настройки) — Material 3 Expressive.
+   Классы стабильны, значения — только токены theme.css. */
+
+@import "../../theme.css";
+
 .student-page {
   min-height: 100dvh;
   padding: 28px 16px 48px;
-  background: #f2f6fc;
-  color: #0b1b33;
-  font-family: -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI", sans-serif;
+  background: var(--color-surface);
+  color: var(--color-on-surface);
+  font-family: var(--font-family);
 }
 
 .student-shell {
@@ -34,10 +39,12 @@
 .student-title {
   margin: 8px 0 6px;
   font-size: clamp(28px, 4vw, 42px);
+  font-weight: var(--font-display-weight);
+  line-height: 1.15;
 }
 
 .student-muted {
-  color: #5a6b87;
+  color: var(--color-on-surface-variant);
 }
 
 .student-grid {
@@ -49,10 +56,10 @@
 
 .student-panel,
 .student-entry {
-  background: #ffffff;
-  border: 1px solid #dce6f3;
-  border-radius: 22px;
-  box-shadow: 0 8px 24px rgba(11, 27, 51, 0.06);
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 .student-panel {
@@ -72,8 +79,13 @@
 }
 
 .student-entry--own {
-  border: 2px solid #2f7cf6;
-  background: #f5f9ff;
+  border: 2px solid var(--color-primary);
+  background: var(--color-primary-container);
+  color: var(--color-on-primary-container);
+}
+
+.student-entry--own .student-muted {
+  color: var(--color-on-primary-container);
 }
 
 .student-entry--draggable {
@@ -86,12 +98,12 @@
 
 .student-badge {
   display: inline-flex;
-  padding: 5px 10px;
-  border-radius: 999px;
-  color: #245da9;
-  background: #e8f1ff;
-  font-size: 13px;
-  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: var(--radius-chip);
+  color: var(--color-on-secondary-container);
+  background: var(--color-secondary-container);
+  font-size: var(--font-label-size);
+  font-weight: var(--font-label-weight);
 }
 
 .student-button,
@@ -99,26 +111,31 @@
 .student-textarea {
   box-sizing: border-box;
   font: inherit;
-  border-radius: 14px;
+  border-radius: var(--radius-pill);
 }
 
 .student-button {
-  padding: 10px 14px;
-  color: #165ab9;
-  background: #e8f1ff;
+  padding: 12px 20px;
+  color: var(--color-on-secondary-container);
+  background: var(--color-secondary-container);
   border: 0;
-  font-weight: 700;
+  font-weight: var(--font-label-weight);
   cursor: pointer;
+  transition: transform 150ms var(--ease-standard);
+}
+
+.student-button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .student-button--primary {
-  color: #ffffff;
-  background: #2f7cf6;
+  color: var(--color-on-primary);
+  background: var(--color-primary);
 }
 
 .student-button--danger {
-  color: #a93429;
-  background: #fff0ee;
+  color: var(--color-on-error);
+  background: var(--color-error);
 }
 
 .student-button:disabled {
@@ -130,35 +147,49 @@
   display: grid;
   gap: 7px;
   margin-top: 14px;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--font-body-size);
+  font-weight: var(--font-label-weight);
 }
 
 .student-input,
 .student-textarea {
   width: 100%;
-  padding: 11px 13px;
-  color: #0b1b33;
-  background: #f2f6fc;
+  padding: 12px 20px;
+  color: var(--color-on-surface);
+  background: var(--color-surface-variant);
   border: 2px solid transparent;
   resize: vertical;
+  transition: border-color 150ms var(--ease-standard);
 }
 
 .student-input:focus,
 .student-textarea:focus {
   outline: none;
-  border-color: #2f7cf6;
+  border-color: var(--color-primary);
+}
+
+.student-notice {
+  padding: 12px 18px;
+  color: var(--color-on-primary-container);
+  background: var(--color-primary-container);
+  border-radius: var(--radius-chip);
 }
 
 .student-error {
-  padding: 12px 14px;
-  color: #a93429;
-  background: #fff0ee;
-  border-radius: 14px;
+  padding: 12px 18px;
+  color: var(--color-on-error);
+  background: var(--color-error);
+  border-radius: var(--radius-chip);
 }
 
 @media (max-width: 760px) {
   .student-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-button {
+    transition: none;
   }
 }

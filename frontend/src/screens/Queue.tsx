@@ -126,6 +126,7 @@ export function Queue({
   const [absenceReason, setAbsenceReason] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const loadQueue = useCallback(async () => {
     setQueue(await api.getQueue(sessionId));
@@ -161,11 +162,13 @@ export function Queue({
     if (ownEntry.absence_reason !== null) setAbsenceReason(ownEntry.absence_reason);
   }, [ownEntry]);
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void>, successMessage?: string) {
     setPending(true);
     setError(null);
+    setNotice(null);
     try {
       await action();
+      if (successMessage) setNotice(successMessage);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Неизвестная ошибка");
     } finally {
@@ -176,6 +179,7 @@ export function Queue({
   function saveLock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!ownEntry) return;
+    const locked = lockEnabled;
     void run(async () => {
       const result = await api.setLock(
         sessionId,
@@ -185,7 +189,7 @@ export function Queue({
       );
       setLockReason(result.lock_reason ?? "");
       await loadQueue();
-    });
+    }, locked ? "Место зафиксировано" : "Фиксация снята — запись снова можно двигать");
   }
 
   function markAbsent() {
@@ -194,7 +198,7 @@ export function Queue({
       const result = await api.markAbsent(ownEntry.id, absenceReason);
       setAbsenceReason(result.absence_reason ?? "");
       await loadQueue();
-    });
+    }, "Вы отказались от этой сессии. Преподаватель видит причину.");
   }
 
   function dropOn(event: DragEvent<HTMLElement>, target: StudentQueueEntry) {
@@ -222,7 +226,7 @@ export function Queue({
         reorder: () => api.reorder(sessionId, source.id, target.id, placement),
         reload: () => api.getQueue(sessionId),
       });
-    });
+    }, "Порядок обновлён");
   }
 
   return (
@@ -243,6 +247,7 @@ export function Queue({
         </header>
 
         {error && <p className="student-error" role="alert">{error}</p>}
+        {notice && <p className="student-notice" role="status">{notice}</p>}
         {!queue && !error && <p>Загружаем очередь…</p>}
 
         {queue && (
@@ -270,7 +275,7 @@ export function Queue({
                       onDrop={(event) => dropOn(event, entry)}
                     >
                       <div className="student-line">
-                        <strong>#{entry.position} · {entry.student_name}{isOwn ? " (вы)" : ""}</strong>
+                        <strong>#{entry.position}, {entry.student_name}{isOwn ? " (вы)" : ""}</strong>
                         <span className="student-badge">{statusLabels[entry.status]}</span>
                       </div>
                       <p className="student-muted">{etaLabel(entry)}</p>
@@ -289,6 +294,11 @@ export function Queue({
                   <p><strong>Позиция:</strong> {ownEntry.position}</p>
                   <p><strong>Статус:</strong> {statusLabels[ownEntry.status]}</p>
                   <p><strong>{etaLabel(ownEntry)}</strong></p>
+                  {queue.frozen && ownEntry.status === "waiting" && (
+                    <p className="student-muted" role="status">
+                      Порядок заморожен преподавателем — перемещения отключены.
+                    </p>
+                  )}
                   {ownIndex >= 0 && (
                     <p className="student-muted">
                       Перед вами: {activeEntries[ownIndex - 1]?.student_name ?? "никого"}<br />

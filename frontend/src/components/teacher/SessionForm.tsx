@@ -106,7 +106,7 @@ export function SessionForm({ groups, pending = false, onCreate }: SessionFormPr
                 checked={groupIds.includes(group.id)}
                 onChange={() => setGroupIds(toggle(groupIds, group.id))}
               />
-              {group.name} · {group.students.length}
+              {group.name} ({group.students.length})
             </label>
           ))}
         </div>
@@ -128,7 +128,7 @@ export function SessionForm({ groups, pending = false, onCreate }: SessionFormPr
                 checked={studentIds.includes(student.id)}
                 onChange={() => setStudentIds(toggle(studentIds, student.id))}
               />
-              {student.full_name} · {student.email}
+              {student.full_name} ({student.email})
             </label>
           ))}
         </div>

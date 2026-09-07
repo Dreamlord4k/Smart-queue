@@ -1,39 +1,214 @@
-/* Единая Material You-тема фронта: CSS-переменные палитры, радиусы,
-   тени и шрифт-стек. Значения зафиксированы дизайн-решением:
-   фон #F2F6FC, поверхности белые, primary #2F7CF6, текст #0B1B33,
-   коралл #FF6B5E — только акценты. Без внешних CDN. */
+/* Единая тема фронта — Material 3 Expressive.
+   Единственный источник цвета/формы/шрифта: все экраны используют
+   только эти переменные, захардкоженных значений в компонентах нет.
+   Шрифт Manrope Variable подключается пакетом @fontsource-variable/manrope
+   (импорт в main.tsx), ниже — стек с системным фолбэком. */
+
+:root,
+[data-theme="light"] {
+  --color-primary: #ff6f5e;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #ffdad3;
+  --color-on-primary-container: #5c1005;
+  --color-secondary: #3e7c99;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #d3e7f0;
+  --color-on-secondary-container: #0c3542;
+  --color-surface: #fffbfa;
+  --color-surface-variant: #f1e4e0;
+  --color-surface-container: #f7ece8;
+  --color-on-surface: #201a18;
+  --color-on-surface-variant: #52443f;
+  --color-outline: #857370;
+  --color-error: #b3261e;
+  --color-on-error: #ffffff;
+  --color-error-container: #f9dedc;
+
+  --shadow-card: 0 1px 2px rgba(32, 26, 24, 0.06), 0 8px 24px rgba(32, 26, 24, 0.06);
+  --shadow-lifted: 0 2px 4px rgba(32, 26, 24, 0.08), 0 16px 40px rgba(32, 26, 24, 0.1);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --color-primary: #ffb4a2;
+  --color-on-primary: #5c1000;
+  --color-primary-container: #7a1f14;
+  --color-on-primary-container: #ffdad3;
+  --color-secondary: #8ec7de;
+  --color-on-secondary: #003544;
+  --color-secondary-container: #1e4a5c;
+  --color-on-secondary-container: #d3e7f0;
+  --color-surface: #171210;
+  --color-surface-variant: #2b2320;
+  --color-surface-container: #211b19;
+  --color-on-surface: #ede0db;
+  --color-on-surface-variant: #d8c2bc;
+  --color-outline: #a08c87;
+  --color-error: #f2b8b5;
+  --color-on-error: #601410;
+  --color-error-container: #8c1d18;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lifted: 0 2px 4px rgba(0, 0, 0, 0.45), 0 16px 40px rgba(0, 0, 0, 0.4);
+
+  color-scheme: dark;
+}
+
+/* Без сохранённого выбора — за системой, теми же тёмными тонами. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-primary: #ffb4a2;
+    --color-on-primary: #5c1000;
+    --color-primary-container: #7a1f14;
+    --color-on-primary-container: #ffdad3;
+    --color-secondary: #8ec7de;
+    --color-on-secondary: #003544;
+    --color-secondary-container: #1e4a5c;
+    --color-on-secondary-container: #d3e7f0;
+    --color-surface: #171210;
+    --color-surface-variant: #2b2320;
+    --color-surface-container: #211b19;
+    --color-on-surface: #ede0db;
+    --color-on-surface-variant: #d8c2bc;
+    --color-outline: #a08c87;
+    --color-error: #f2b8b5;
+    --color-on-error: #601410;
+    --color-error-container: #8c1d18;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lifted: 0 2px 4px rgba(0, 0, 0, 0.45), 0 16px 40px rgba(0, 0, 0, 0.4);
+
+    color-scheme: dark;
+  }
+}
 
 :root {
-  --color-bg: #f2f6fc;
-  --color-surface: #ffffff;
-  --color-primary: #2f7cf6;
-  --color-primary-soft: #e7f0ff;
-  --color-primary-deep: #174477;
-  --color-ink: #0b1b33;
-  --color-muted: #64748b;
-  --color-faint: #53657f;
-  --color-border: #d7e0ec;
-  --color-field: #f4f7fb;
-  --color-accent: #ff6b5e;
-  --color-danger: #d94b40;
-  --color-danger-soft: #fff0ee;
-  --color-danger-ink: #a9342b;
+  /* Форма: от чипов 12px до карточек 28px; поля и главные кнопки — pill. */
+  --radius-chip: 12px;
+  --radius-card: 28px;
+  --radius-sheet: 28px;
+  --radius-pill: 9999px;
 
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 18px;
-  --radius-xl: 22px;
-  --radius-2xl: 28px;
+  /* Движение: пружина вместо линейного ease — открытие карточек и переходы. */
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
-  --shadow-card: 0 8px 28px rgba(11, 27, 51, 0.07);
-  --shadow-soft: 0 3px 14px rgba(11, 27, 51, 0.05);
-  --shadow-lifted:
-    0 12px 32px rgba(11, 27, 51, 0.08),
-    0 2px 6px rgba(11, 27, 51, 0.06);
+  /* Типографика Manrope: 4 уровня, различаются весом и размером. */
+  --font-family: "Manrope Variable", "Manrope", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
 
-  --font-stack:
-    -apple-system, BlinkMacSystemFont, "Roboto", "Segoe UI",
-    "Helvetica Neue", Arial, sans-serif;
+  --font-display-size: 32px;
+  --font-display-weight: 800;
+  --font-headline-size: 22px;
+  --font-headline-weight: 700;
+  --font-body-size: 16px;
+  --font-body-weight: 400;
+  --font-label-size: 13px;
+  --font-label-weight: 700;
+}
+
+/* Типографическая шкала. */
+
+.t-display {
+  font-family: var(--font-family);
+  font-size: var(--font-display-size);
+  font-weight: var(--font-display-weight);
+  line-height: 1.15;
+  letter-spacing: 0.005em;
+}
+
+.t-headline {
+  font-family: var(--font-family);
+  font-size: var(--font-headline-size);
+  font-weight: var(--font-headline-weight);
+  line-height: 1.25;
+}
+
+.t-body {
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  font-weight: var(--font-body-weight);
+  line-height: 1.5;
+}
+
+.t-label {
+  font-family: var(--font-family);
+  font-size: var(--font-label-size);
+  font-weight: var(--font-label-weight);
+  line-height: 1.4;
+}
+
+/* Корень приложения: базовый фон и шрифт для всех экранов. */
+
+.app-root {
+  min-height: 100dvh;
+  font-family: var(--font-family);
+  color: var(--color-on-surface);
+  background: var(--color-surface);
+}
+
+/* Один продуманный момент движения: появление карточек пружиной. */
+
+@keyframes rise-spring {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.anim-rise {
+  animation: rise-spring 450ms var(--ease-spring) both;
+}
+
+/* Переключатель темы: pill-трек, пружинная ручка. */
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 8px;
+  font-family: var(--font-family);
+  font-size: var(--font-label-size);
+  font-weight: var(--font-label-weight);
+  color: var(--color-on-surface);
+  background: var(--color-surface-variant);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.theme-toggle__knob {
+  width: 40px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--color-outline);
+  position: relative;
+  transition: background-color 200ms var(--ease-standard);
+}
+
+.theme-toggle__knob::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  transition: transform 300ms var(--ease-spring);
+}
+
+.theme-toggle[aria-checked="true"] .theme-toggle__knob {
+  background: var(--color-primary);
+}
+
+.theme-toggle[aria-checked="true"] .theme-toggle__knob::after {
+  transform: translateX(16px);
 }
 
 /* Студенческие очереди («Мои очереди»). */
@@ -44,15 +219,16 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 24px;
-  font-family: var(--font-stack);
-  color: var(--color-ink);
-  background: var(--color-bg);
+  font-family: var(--font-family);
+  color: var(--color-on-surface);
+  background: var(--color-surface);
 }
 
 .mq-page h1 {
   margin: 0 0 16px;
-  font-size: 26px;
-  line-height: 1.2;
+  font-size: var(--font-display-size);
+  font-weight: var(--font-display-weight);
+  line-height: 1.15;
 }
 
 .mq-grid {
@@ -61,54 +237,76 @@
 }
 
 .mq-card {
-  padding: 18px;
-  background: var(--color-surface);
-  border-radius: var(--radius-lg);
+  padding: 20px;
+  color: var(--color-on-surface);
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-outline);
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
 
 .mq-card h2 {
   margin: 0 0 8px;
-  font-size: 20px;
+  font-size: var(--font-headline-size);
+  font-weight: var(--font-headline-weight);
 }
 
 .mq-card p {
   margin: 6px 0;
+  color: var(--color-on-surface-variant);
+}
+
+.mq-card p:first-of-type {
+  color: var(--color-on-surface);
 }
 
 .mq-warn {
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--color-primary-deep);
-  background: var(--color-primary-soft);
-  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  font-size: var(--font-label-size);
+  font-weight: var(--font-label-weight);
+  color: var(--color-on-secondary-container);
+  background: var(--color-secondary-container);
+  border-radius: var(--radius-chip);
 }
 
 .mq-error {
-  padding: 12px 14px;
-  font-size: 14px;
-  color: var(--color-danger-ink);
-  background: var(--color-danger-soft);
-  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: var(--font-body-size);
+  color: var(--color-on-error);
+  background: var(--color-error);
+  border-radius: var(--radius-chip);
+}
+
+.mq-error .mq-retry {
+  margin-left: 12px;
+  padding: 8px 16px;
+  font: inherit;
+  font-weight: var(--font-label-weight);
+  color: var(--color-error);
+  background: var(--color-on-error);
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
 }
 
 .mq-button {
-  padding: 12px 18px;
-  font: inherit;
-  font-weight: 700;
-  color: #ffffff;
+  padding: 14px 24px;
+  font-family: var(--font-family);
+  font-size: var(--font-body-size);
+  font-weight: var(--font-label-weight);
+  color: var(--color-on-primary);
   background: var(--color-primary);
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(47, 124, 246, 0.3);
+  box-shadow: var(--shadow-card);
   transition:
-    transform 130ms ease,
-    background-color 150ms ease;
+    transform 150ms var(--ease-standard),
+    background-color 150ms var(--ease-standard);
 }
 
 .mq-button:hover {
-  background: #2570e8;
+  transform: scale(1.02);
 }
 
 .mq-button:active {
@@ -116,6 +314,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .anim-rise {
+    animation: none;
+  }
   .mq-button {
     transition: none;
   }
