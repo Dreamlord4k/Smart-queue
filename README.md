@@ -110,6 +110,33 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 
 Локально webhook не нужен — бот работает в long polling, без токена опрос отключён.
 
+## Обновление на боевом сервере
+
+```bash
+git pull origin main
+docker compose up --build -d
+```
+
+На проде с HTTPS — с оверлеем:
+
+```bash
+docker compose -f docker-compose.yml -f scripts/deploy/docker-compose.https.yml up --build -d
+```
+
+Проверка после обновления:
+
+```bash
+docker compose exec backend alembic -c /workspace/backend/alembic.ini upgrade head
+curl https://<домен>/health
+```
+
+Что сохраняется, а что нет:
+
+- Данные и сессии сохраняются: Postgres живёт в volume — главное, не добавлять `-v` к `down`.
+- Токены живы, пока тот же `JWT_SECRET` — refresh продолжает работать без перелогина.
+- `.env` не перезаписывать: `git pull` его не трогает, образец лежит в `.env.example`.
+- Фронт после обновления — жёсткая перезагрузка в браузере (Ctrl+F5), иначе старый бандл из кэша.
+
 ## Тесты
 
 Backend (в контейнере, всего 50+):
@@ -153,3 +180,39 @@ docker compose run --rm --no-deps -v "$PWD/scripts:/workspace/scripts:ro" \
 - **Done/skip** — канал освобождается, следующий вызывается автоматически, ETA пересчитывается при `capacity=2`.
 - **Отчёт** — после «Закрыть сессию»: принято/пропущено, план vs факт, ошибка ETA.
 - **Realtime** — события прилетают по WebSocket; при обрыве — опрос каждые 5 секунд.
+
+## Troubleshooting (Windows PC → домен)
+
+Боевой опыт деплоя, сжато: симптом → причина → лечение.
+
+| Симптом | Причина | Лечение |
+|---|---|---|
+| `Bind 0.0.0.0:8000` | Старый стенд не погашен или хвост Docker держит проброс | `docker compose down`; висящих найти (`lsof -i :PORT`, `docker ps -a`) и снести; либо соседние порты. Переменные — в одной строке с командой или через `export` |
+| Env не применился | `VAR=x` без `export` не уходит в дочерний процесс | `export VAR=...` заранее или префикс в той же строке. Проверка: `docker compose config \| grep VAR` |
+| CORS 400 на OPTIONS | Дефолт разрешает только localhost | Задать `CORS_ORIGINS` + `VITE_API_BASE_URL` и пересобрать фронт (Vite вшивает адрес в build) |
+| Фронт бьёт в дефолт | Нужные строки закомментированы | Раскомментировать 2 строки под домен, LAN-пример не трогать |
+| 404 на все запросы API | nginx отдаёт API под `/api` | `VITE_API_BASE_URL=https://<домен>/api` — с суффиксом |
+| Backend падает на старте | Пароль в `POSTGRES_PASSWORD` и `DB_URL` различаются; пустой `JWT_SECRET` | Синхронизировать пароли; задать секрет. Ручной INSERT в `groups` — с `gen_random_uuid()` |
+| Нечего выбрать при регистрации | Создания групп через API нет by design | Seed: `INSERT` групп + `RETURNING id` |
+| Серт не выпускается | `.sh` в PowerShell молча не выполняется; нет доступа снаружи; `DOMAIN` не FQDN | Только Git Bash (или ручные docker-команды); сначала `curl http://<домен>/health` снаружи; `DOMAIN` с точкой; на вопрос EFF — N |
+| 502 от nginx | Стартовал до серта и не пересоздавался | Подъём с оверлеем + `--force-recreate nginx` после выпуска; plain `up` без оверлея убивает https |
+| Нет доступа снаружи | Firewall / роутер / CGNAT | Только inbound 80/443; проброс на IP этого PC (статический lease); белый IP = резолв `nslookup` |
+| `curl` с двумя `-d` падает | В PowerShell `curl` — алиас | `curl.exe`; вместо `tail` — `--tail` |
+| Telegram недоступен с сервера | `api.telegram.org` без egress | VPN на хосте + split tunneling только `api.telegram.org`. Проверка: `curl.exe https://api.telegram.org --max-time 10` |
+| Webhook не встаёт | Перепутаны 3 секрета | `BOT_TOKEN` от BotFather, `WEBHOOK_SECRET` свой рандом, `JWT_SECRET` свой hex |
+| Dev-фронт режет чужой Host | Фильтр Vite | `allowedHosts` в `vite.config` (уже в коде) |
+| Падает CI | Lock рассинхрон; rollup linux-optional | `npm install` (в контейнере, если нет node), lock не удалять |
+| DNS | — | `A` на IP, TTL 300; Cloudflare только DNS-only |
+
+Золотое правило — по шагам, не прыгать: HTTP снаружи → серт → HTTPS → webhook → дым с LTE.
+
+```bash
+curl http://<домен>/health                                   # 1. виден снаружи
+./scripts/deploy/issue_certificate.sh                       # 2. серт
+docker compose -f docker-compose.yml \
+  -f scripts/deploy/docker-compose.https.yml up -d --force-recreate nginx  # 3. https
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -d url=https://<домен>/telegram/webhook \
+  -d secret_token=<TELEGRAM_WEBHOOK_SECRET>                 # 4. webhook
+# 5. дымовой прогон сценария и фронта с мобильного интернета
+```
