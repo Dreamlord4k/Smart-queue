@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as DatabaseSession
 
 from backend.auth.dependencies import get_db, require_role
+from backend.logging_config import log_operation, log_route_errors
 from backend.models.group import Group
 from backend.models.queue_entry import QueueEntry, QueueEntryStatus
 from backend.models.service_stat import ServiceStat
@@ -472,6 +473,7 @@ def update_session(
     response_model=ParticipantMutationResponse,
     status_code=status.HTTP_201_CREATED,
 )
+@log_route_errors("participant.added")
 def add_participant(
     session_id: UUID,
     payload: AddParticipantRequest,
@@ -521,6 +523,13 @@ def add_participant(
     )
     db.commit()
     publish_session_event(reception.id, "participant.added")
+    log_operation(
+        "participant.added",
+        session_id=session_id,
+        entry_id=entry.id,
+        actor_id=teacher.id,
+        position_after=entry.position,
+    )
     return response
 
 
@@ -528,6 +537,7 @@ def add_participant(
     "/{session_id}/participants/{entry_id}",
     response_model=ParticipantMutationResponse,
 )
+@log_route_errors("participant.removed")
 def remove_participant(
     session_id: UUID,
     entry_id: UUID,
@@ -555,6 +565,7 @@ def remove_participant(
             detail="Историю вызова, завершения, пропуска или отказа удалять нельзя",
         )
 
+    position_before = entry.position
     db.delete(entry)
     db.flush()
     active_entries = _active_entries(session_id, db, lock=True)
@@ -566,22 +577,39 @@ def remove_participant(
     )
     db.commit()
     publish_session_event(reception.id, "participant.removed")
+    log_operation(
+        "participant.removed",
+        session_id=session_id,
+        entry_id=entry_id,
+        actor_id=teacher.id,
+        position_before=position_before,
+    )
     return response
 
 
 @router.post("/{session_id}/freeze", response_model=FreezeResponse)
+@log_route_errors("session.frozen")
 def freeze_session(
     session_id: UUID,
     teacher: User = Depends(require_role(UserRole.TEACHER)),
     db: DatabaseSession = Depends(get_db),
 ) -> FreezeResponse:
     reception = _owned_session(session_id, teacher, db)
+    frozen_before = reception.frozen
     if not reception.frozen:
         reception.frozen = True
         db.commit()
         db.refresh(reception)
         publish_session_event(reception.id, "session.frozen")
+    log_operation(
+        "session.frozen",
+        session_id=session_id,
+        actor_id=teacher.id,
+        frozen_before=frozen_before,
+        frozen_after=reception.frozen,
+    )
     return FreezeResponse(id=reception.id, frozen=reception.frozen)
+
 
 @router.post("/{session_id}/unfreeze", response_model=FreezeResponse)
 def unfreeze_session(

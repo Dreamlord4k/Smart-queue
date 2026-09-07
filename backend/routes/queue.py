@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session as DatabaseSession
 
 from backend.auth.dependencies import get_current_user, get_db, require_role
+from backend.logging_config import log_operation, log_route_errors
 from backend.models.queue_entry import QueueEntry, QueueEntryStatus
 from backend.models.queue_move_log import QueueMoveLog
 from backend.models.service_stat import ServiceStat
@@ -321,6 +322,9 @@ def _transition_called_entry(
     if not 1 <= entry.channel <= reception.capacity:
         raise HTTPException(status_code=409, detail="У записи некорректный канал")
 
+    previous_stat = db.get(ServiceStat, reception.id)
+    ema_before = previous_stat.ema_estimate if previous_stat else None
+    position_before = entry.position
     now = datetime.now(timezone.utc)
     released_channel = entry.channel
     service_stat: ServiceStat | None = None
@@ -365,12 +369,24 @@ def _transition_called_entry(
         if target_status == QueueEntryStatus.DONE
         else "queue.skipped",
     )
+    log_operation(
+        "queue.done" if target_status == QueueEntryStatus.DONE else "queue.skipped",
+        session_id=reception.id,
+        entry_id=entry.id,
+        actor_id=teacher.id,
+        position_before=position_before,
+        released_channel=released_channel,
+        next_entry_id=next_entry.id if next_entry else None,
+        ema_before=ema_before,
+        ema_after=service_stat.ema_estimate if service_stat else None,
+    )
     return response
 
 
 @router.patch(
     "/sessions/{session_id}/queue/reorder", response_model=ReorderResponse
 )
+@log_route_errors("queue.reordered")
 def reorder_own_entry(
     session_id: UUID,
     payload: ReorderRequest,
@@ -471,6 +487,14 @@ def reorder_own_entry(
     )
     db.commit()
     publish_session_event(reception.id, "queue.reordered")
+    log_operation(
+        "queue.reordered",
+        session_id=reception.id,
+        entry_id=source.id,
+        actor_id=student.id,
+        position_before=old_position,
+        position_after=source.position,
+    )
     return response
 
 
@@ -478,6 +502,7 @@ def reorder_own_entry(
     "/sessions/{session_id}/queue/{entry_id}/lock",
     response_model=LockResponse,
 )
+@log_route_errors("queue.locked")
 def set_own_entry_lock(
     session_id: UUID,
     entry_id: UUID,
@@ -486,6 +511,7 @@ def set_own_entry_lock(
     db: DatabaseSession = Depends(get_db),
 ) -> LockResponse:
     reception, entry = _owned_waiting_entry(db, session_id, entry_id, student)
+    locked_before = entry.locked
     entry.locked = payload.locked
     entry.lock_reason = payload.lock_reason if payload.locked else None
     db.flush()
@@ -502,6 +528,14 @@ def set_own_entry_lock(
     )
     db.commit()
     publish_session_event(reception.id, "queue.locked")
+    log_operation(
+        "queue.locked",
+        session_id=reception.id,
+        entry_id=entry.id,
+        actor_id=student.id,
+        locked_before=locked_before,
+        locked_after=entry.locked,
+    )
     return response
 
 
@@ -509,6 +543,7 @@ def set_own_entry_lock(
     "/sessions/{session_id}/queue/{entry_id}/done",
     response_model=QueueTransitionResponse,
 )
+@log_route_errors("queue.done")
 def finish_current(
     session_id: UUID,
     entry_id: UUID,
@@ -524,6 +559,7 @@ def finish_current(
     "/sessions/{session_id}/queue/{entry_id}/skip",
     response_model=QueueTransitionResponse,
 )
+@log_route_errors("queue.skipped")
 def skip_current(
     session_id: UUID,
     entry_id: UUID,
@@ -538,6 +574,7 @@ def skip_current(
 @router.post(
     "/students/me/queues/{entry_id}/absence", response_model=AbsenceResponse
 )
+@log_route_errors("queue.absent")
 def mark_absent(
     entry_id: UUID,
     payload: AbsenceRequest,
@@ -550,6 +587,8 @@ def mark_absent(
     if entry.status not in ACTIVE_STATUSES:
         raise HTTPException(status_code=409, detail="Запись уже не входит в активную очередь")
 
+    position_before = entry.position
+    status_before = entry.status.value
     released_channel = entry.channel if entry.status == QueueEntryStatus.CALLED else None
     entry.status = QueueEntryStatus.ABSENT
     entry.absence_reason = payload.absence_reason
@@ -571,6 +610,15 @@ def mark_absent(
     )
     db.commit()
     publish_session_event(reception.id, "queue.absent")
+    log_operation(
+        "queue.absent",
+        session_id=reception.id,
+        entry_id=entry.id,
+        actor_id=student.id,
+        position_before=position_before,
+        status_before=status_before,
+        released_channel=released_channel,
+    )
     return response
 
 

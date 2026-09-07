@@ -40,60 +40,76 @@ async function errorMessage(response: Response): Promise<string> {
   return `Ошибка запроса (${response.status})`;
 }
 
+function stripQuery(path: string): string {
+  return path.split("?", 1)[0];
+}
+
+function logApiError(action: string, path: string, status?: number): void {
+  // Токены живут только в заголовках и теле — в путь без query они не попадают.
+  console.error({ url: stripQuery(path), ...(status === undefined ? {} : { status }), action });
+}
+
 export function createTeacherApi(
   accessToken: string,
   apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "",
   fetchImpl: FetchImpl = fetch,
 ): TeacherApi {
-  async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetchWithSession(path, {
-      ...init,
-      headers: {
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
-    }, { accessToken, apiBaseUrl, fetchImpl });
+  async function request<T>(action: string, path: string, init: RequestInit = {}): Promise<T> {
+    let response: Response;
+    try {
+      response = await fetchWithSession(path, {
+        ...init,
+        headers: {
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
+          ...init.headers,
+        },
+      }, { accessToken, apiBaseUrl, fetchImpl });
+    } catch (networkError) {
+      logApiError(action, path);
+      throw networkError;
+    }
     if (!response.ok) {
+      logApiError(action, path, response.status);
       throw new Error(await errorMessage(response));
     }
     return (await response.json()) as T;
   }
 
   return {
-    listSessions: () => request<SessionSummary[]>("/sessions/mine"),
+    listSessions: () => request<SessionSummary[]>("teacher.listSessions", "/sessions/mine"),
     listGroups: () =>
-      request<GroupWithStudents[]>("/groups?include_students=true"),
+      request<GroupWithStudents[]>("teacher.listGroups", "/groups?include_students=true"),
     createSession: (input) =>
-      request<CreatedSession>("/sessions", {
+      request<CreatedSession>("teacher.createSession", "/sessions", {
         method: "POST",
         body: JSON.stringify(input),
       }),
     getQueue: (sessionId) =>
-      request<QueueState>(`/sessions/${sessionId}/queue`),
+      request<QueueState>("teacher.getQueue", `/sessions/${sessionId}/queue`),
     updateSession: (sessionId, patch) =>
-      request<SessionUpdate>(`/sessions/${sessionId}`, {
+      request<SessionUpdate>("teacher.updateSession", `/sessions/${sessionId}`, {
         method: "PATCH",
         body: JSON.stringify(patch),
       }),
     freezeSession: (sessionId) =>
-      request<{ id: string; frozen: boolean }>(`/sessions/${sessionId}/freeze`, {
+      request<{ id: string; frozen: boolean }>("teacher.freezeSession", `/sessions/${sessionId}/freeze`, {
         method: "POST",
       }),
     unfreezeSession: (sessionId) =>
-      request<{ id: string; frozen: boolean }>(`/sessions/${sessionId}/unfreeze`, {
+      request<{ id: string; frozen: boolean }>("teacher.unfreezeSession", `/sessions/${sessionId}/unfreeze`, {
         method: "POST",
       }),
     finishEntry: (sessionId, entryId) =>
-      request(`/sessions/${sessionId}/queue/${entryId}/done`, { method: "POST" }),
+      request("teacher.finishEntry", `/sessions/${sessionId}/queue/${entryId}/done`, { method: "POST" }),
     skipEntry: (sessionId, entryId) =>
-      request(`/sessions/${sessionId}/queue/${entryId}/skip`, { method: "POST" }),
+      request("teacher.skipEntry", `/sessions/${sessionId}/queue/${entryId}/skip`, { method: "POST" }),
     addParticipant: (sessionId, studentId) =>
-      request(`/sessions/${sessionId}/participants`, {
+      request("teacher.addParticipant", `/sessions/${sessionId}/participants`, {
         method: "POST",
         body: JSON.stringify({ student_id: studentId }),
       }),
     removeParticipant: (sessionId, entryId) =>
-      request(`/sessions/${sessionId}/participants/${entryId}`, {
+      request("teacher.removeParticipant", `/sessions/${sessionId}/participants/${entryId}`, {
         method: "DELETE",
       }),
   };

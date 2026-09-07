@@ -44,28 +44,46 @@ async function errorMessage(response: Response): Promise<string> {
   return `Ошибка запроса (${response.status})`;
 }
 
+function stripQuery(path: string): string {
+  return path.split("?", 1)[0];
+}
+
+function logApiError(action: string, path: string, status?: number): void {
+  // Токены живут только в заголовках и теле — в путь без query они не попадают.
+  console.error({ url: stripQuery(path), ...(status === undefined ? {} : { status }), action });
+}
+
 export function createStudentApi(
   accessToken: string,
   apiBaseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "",
   fetchImpl: FetchImpl = fetch,
 ): StudentApi {
-  async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetchWithSession(path, {
-      ...init,
-      headers: {
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
-    }, { accessToken, apiBaseUrl, fetchImpl });
-    if (!response.ok) throw new Error(await errorMessage(response));
+  async function request<T>(action: string, path: string, init: RequestInit = {}): Promise<T> {
+    let response: Response;
+    try {
+      response = await fetchWithSession(path, {
+        ...init,
+        headers: {
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
+          ...init.headers,
+        },
+      }, { accessToken, apiBaseUrl, fetchImpl });
+    } catch (networkError) {
+      logApiError(action, path);
+      throw networkError;
+    }
+    if (!response.ok) {
+      logApiError(action, path, response.status);
+      throw new Error(await errorMessage(response));
+    }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
 
   return {
-    getQueue: (sessionId) => request(`/sessions/${sessionId}/queue`),
+    getQueue: (sessionId) => request("student.getQueue", `/sessions/${sessionId}/queue`),
     reorder: async (sessionId, entryId, targetEntryId, placement) => {
-      await request(`/sessions/${sessionId}/queue/reorder`, {
+      await request("student.reorder", `/sessions/${sessionId}/queue/reorder`, {
         method: "PATCH",
         body: JSON.stringify({
           entry_id: entryId,
@@ -75,7 +93,7 @@ export function createStudentApi(
       });
     },
     setLock: (sessionId, entryId, locked, lockReason) =>
-      request(`/sessions/${sessionId}/queue/${entryId}/lock`, {
+      request("student.setLock", `/sessions/${sessionId}/queue/${entryId}/lock`, {
         method: "PATCH",
         body: JSON.stringify({
           locked,
@@ -83,14 +101,14 @@ export function createStudentApi(
         }),
       }),
     markAbsent: (entryId, absenceReason) =>
-      request(`/students/me/queues/${entryId}/absence`, {
+      request("student.markAbsent", `/students/me/queues/${entryId}/absence`, {
         method: "POST",
         body: JSON.stringify({ absence_reason: absenceReason?.trim() || null }),
       }),
     initTelegramLink: () =>
-      request("/telegram/link/init", { method: "POST" }),
+      request("student.initTelegramLink", "/telegram/link/init", { method: "POST" }),
     deleteProfile: async () => {
-      await request("/auth/me", { method: "DELETE" });
+      await request("student.deleteProfile", "/auth/me", { method: "DELETE" });
       const storage = browserTokenStorage();
       if (storage) clearTokens(storage);
     },
