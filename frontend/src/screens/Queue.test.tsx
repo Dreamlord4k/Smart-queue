@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { StudentQueueEntry, StudentQueueState } from "../types/student";
 import {
   canDragEntry,
+  dragAutoScrollDelta,
+  LockReasonDrawer,
   moveOwnEntry,
+  placementForDrop,
   Queue,
   reorderWithRollback,
 } from "./Queue";
@@ -75,6 +78,37 @@ describe("Queue", () => {
     expect(result.slice(0, 2).map((entry) => entry.position)).toEqual([1, 2]);
   });
 
+  it("выбирает сторону вставки по направлению движения", () => {
+    const fifth = { ...entries[1], id: "fifth", position: 5 };
+    const third = { ...entries[0], id: "third", position: 3 };
+
+    expect(placementForDrop(fifth, third)).toBe("before");
+    expect(placementForDrop(third, fifth)).toBe("after");
+  });
+
+  it("делает вставку через locked-якорь, не сдвигая его позицию", () => {
+    const anchored = Array.from({ length: 5 }, (_, index) => ({
+      ...entries[0],
+      id: `entry-${index + 1}`,
+      student_id: `student-${index + 1}`,
+      student_name: `Студент ${index + 1}`,
+      position: index + 1,
+      locked: index === 3,
+    }));
+
+    const result = moveOwnEntry(anchored, "entry-5", "entry-3", "before");
+
+    expect(result.map((entry) => entry.id)).toEqual([
+      "entry-1",
+      "entry-2",
+      "entry-5",
+      "entry-4",
+      "entry-3",
+    ]);
+    expect(result[3]).toMatchObject({ id: "entry-4", locked: true, position: 4 });
+    expect(new Set(result.map((entry) => entry.id)).size).toBe(5);
+  });
+
   it("откатывает оптимистичный порядок после отказа сервера", async () => {
     const states: StudentQueueState[] = [];
 
@@ -91,7 +125,18 @@ describe("Queue", () => {
     ).rejects.toThrow("Целевое место зафиксировано");
 
     expect(states[0].entries[0].id).toBe("own-entry");
-    expect(states.at(-1)).toBe(queue);
+    expect(states.at(-1)).toEqual(queue);
+    expect(states.at(-1)?.entries.map((entry) => entry.id)).toEqual([
+      "foreign-entry",
+      "own-entry",
+    ]);
+    expect(new Set(states.at(-1)?.entries.map((entry) => entry.id)).size).toBe(2);
+  });
+
+  it("ускоряет прокрутку только рядом с краями мобильного viewport", () => {
+    expect(dragAutoScrollDelta(12, 375)).toBeLessThan(0);
+    expect(dragAutoScrollDelta(190, 375)).toBe(0);
+    expect(dragAutoScrollDelta(360, 375)).toBeGreaterThan(0);
   });
 
   it("показывает фиксацию и отказ как независимые действия", () => {
@@ -99,9 +144,27 @@ describe("Queue", () => {
       <Queue accessToken={token("student-2")} sessionId="session-1" initialQueue={queue} />,
     );
 
-    expect(html).toContain("Причина фиксации — необязательно");
+    expect(html).toContain("В начало");
+    expect(html).not.toContain("Например, пересечение с другой парой");
     expect(html).toContain("Причина отказа — необязательно");
     expect(html).toContain("Сохранить фиксацию");
     expect(html).toContain("Отказаться от этой сессии");
+  });
+
+  it("показывает причину фиксации во внепоточном боковом диалоге", () => {
+    const html = renderToStaticMarkup(
+      <LockReasonDrawer
+        open
+        reason="После пары"
+        pending={false}
+        onReasonChange={vi.fn()}
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('role="dialog"');
+    expect(html).toContain('class="student-lock-drawer"');
+    expect(html).toContain("После пары");
   });
 });

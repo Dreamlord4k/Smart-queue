@@ -149,6 +149,49 @@ def test_reorder_rejects_locked_target_and_locked_destination(
         assert [entry.id for entry in saved] == [entry.id for entry in entries]
 
 
+def test_reorder_crosses_locked_anchor_without_moving_it(client: TestClient) -> None:
+    teacher = add_user("teacher@example.com", UserRole.TEACHER)
+    students = [
+        add_user(f"student-{index}@example.com", UserRole.STUDENT)
+        for index in range(1, 6)
+    ]
+    reception, entries = add_session(teacher, students)
+    assert client.patch(
+        f"/sessions/{reception.id}/queue/{entries[3].id}/lock",
+        headers=authorization(students[3]),
+        json={"locked": True},
+    ).status_code == 200
+
+    response = reorder(
+        client,
+        reception,
+        entries[4],
+        students[4],
+        target=entries[2],
+        placement="before",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["new_position"] == 3
+    with SessionLocal() as db:
+        saved = list(
+            db.scalars(
+                select(QueueEntry)
+                .where(QueueEntry.session_id == reception.id)
+                .order_by(QueueEntry.position)
+            ).all()
+        )
+        assert [entry.id for entry in saved] == [
+            entries[0].id,
+            entries[1].id,
+            entries[4].id,
+            entries[3].id,
+            entries[2].id,
+        ]
+        assert saved[3].locked is True
+        assert saved[3].position == 4
+
+
 def test_owner_must_unlock_before_reordering(client: TestClient) -> None:
     teacher = add_user("teacher@example.com", UserRole.TEACHER)
     students = [

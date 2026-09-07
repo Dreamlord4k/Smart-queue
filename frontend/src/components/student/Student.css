@@ -96,6 +96,42 @@
   cursor: grabbing;
 }
 
+.student-reorder-controls,
+.student-lock-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.student-reorder-controls .student-button {
+  flex: 1 1 150px;
+}
+
+.student-drawer-backdrop {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: color-mix(in srgb, var(--color-on-surface) 32%, transparent);
+}
+
+.student-lock-drawer {
+  width: min(390px, calc(100% - 24px));
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 24px;
+  overflow-y: auto;
+  color: var(--color-on-surface);
+  background: var(--color-surface-container);
+  box-shadow: var(--shadow-card);
+}
+
+.student-lock-drawer h2 {
+  margin: 0;
+}
+
 .student-badge {
   display: inline-flex;
   padding: 5px 12px;
@@ -185,6 +221,20 @@
 @media (max-width: 760px) {
   .student-grid {
     grid-template-columns: 1fr;
+  }
+
+  .student-reorder-controls .student-button {
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  .student-reorder-controls .student-button--wide {
+    flex-basis: 100%;
+  }
+
+  .student-lock-drawer {
+    width: min(360px, calc(100% - 12px));
+    padding: 20px 16px;
   }
 }
 

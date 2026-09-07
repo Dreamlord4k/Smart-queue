@@ -74,6 +74,7 @@ describe("TeacherSession", () => {
     expect(html).toContain("Анна Иванова");
     expect(html).toContain("Готово");
     expect(html).toContain("Пропустить");
+    expect(html).toContain("teacher-channel-actions");
     expect(html).toContain("Причина фиксации: Договорился о времени");
     expect(html).toContain("Причина отказа: Другая встреча");
     expect(html).toContain("Добавить участника");

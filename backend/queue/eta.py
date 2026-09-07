@@ -75,7 +75,14 @@ def calculate_eta_ranges(
         else float(reception.duration_default * 60)
     )
     service_time = timedelta(seconds=max(service_seconds, 0.0))
-    uncertainty = timedelta(seconds=ETA_RANGE_K * sqrt(max(variance, 0.0)))
+    # До появления разброса по реальным наблюдениям используем консервативный
+    # prior: стандартное отклонение равно плановой длительности приёма.
+    uncertainty_seconds = (
+        sqrt(variance)
+        if variance > 0
+        else float(reception.duration_default * 60)
+    )
+    uncertainty = timedelta(seconds=ETA_RANGE_K * uncertainty_seconds)
     channel_free_at = [current_time for _ in range(reception.capacity)]
     result: dict[UUID, tuple[datetime, datetime]] = {}
 
