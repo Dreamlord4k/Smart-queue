@@ -290,7 +290,7 @@ export function TeacherSession({
             {(session.status === "active" || session.status === "paused") && (
               <button className="teacher-button" disabled={pending} onClick={() => changeStatus("closed")}>Закрыть сессию</button>
             )}
-            {(session.status === "planned" || session.status === "active" || session.status === "paused") && (
+            {session.status === "planned" && (
               <button className="teacher-button teacher-button--danger" disabled={pending} onClick={() => changeStatus("cancelled")}>Отменить</button>
             )}
           </div>

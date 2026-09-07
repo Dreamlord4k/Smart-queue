@@ -144,6 +144,33 @@ describe("TeacherSession", () => {
     expect(html).not.toContain("Разморозить");
     expect(html).not.toContain("Заморозить список");
   });
+
+  it("не дублирует завершение отменой после начала приёма", () => {
+    const active = renderToStaticMarkup(
+      <TeacherSession accessToken="token" session={session} initialQueue={queue} />,
+    );
+    const paused = renderToStaticMarkup(
+      <TeacherSession
+        accessToken="token"
+        session={{ ...session, status: "paused" }}
+        initialQueue={queue}
+      />,
+    );
+    const planned = renderToStaticMarkup(
+      <TeacherSession
+        accessToken="token"
+        session={{ ...session, status: "planned" }}
+        initialQueue={queue}
+      />,
+    );
+
+    expect(active).toContain("Закрыть сессию");
+    expect(active).not.toContain(">Отменить<");
+    expect(paused).toContain("Закрыть сессию");
+    expect(paused).not.toContain(">Отменить<");
+    expect(planned).toContain(">Отменить<");
+    expect(planned).not.toContain("Закрыть сессию");
+  });
 });
 
 describe("таймер приёма", () => {
