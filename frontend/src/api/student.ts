@@ -8,6 +8,13 @@ import type {
 
 type FetchImpl = typeof fetch;
 
+export interface TelegramLinkState {
+  linked: boolean;
+  code: string | null;
+  expires_at: string | null;
+  deep_link: string | null;
+}
+
 export interface StudentApi {
   getQueue(sessionId: string): Promise<StudentQueueState>;
   reorder(
@@ -23,6 +30,7 @@ export interface StudentApi {
     lockReason?: string,
   ): Promise<LockResult>;
   markAbsent(entryId: string, absenceReason?: string): Promise<AbsenceResult>;
+  initTelegramLink(): Promise<TelegramLinkState>;
   deleteProfile(): Promise<void>;
 }
 
@@ -79,6 +87,8 @@ export function createStudentApi(
         method: "POST",
         body: JSON.stringify({ absence_reason: absenceReason?.trim() || null }),
       }),
+    initTelegramLink: () =>
+      request("/telegram/link/init", { method: "POST" }),
     deleteProfile: async () => {
       await request("/auth/me", { method: "DELETE" });
       const storage = browserTokenStorage();
