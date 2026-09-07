@@ -108,13 +108,13 @@ export function DemoPanel({
   }, [accessToken, demoSession, explicitApiBaseUrl, onReset]);
 
   useEffect(() => {
-    if (!demoSession || !accessToken || availability !== "available") return;
+    if (!demoSession || !accessToken) return;
     const timer = window.setInterval(
       () => void handleReset(true),
       DEMO_RESET_INTERVAL_MS,
     );
     return () => window.clearInterval(timer);
-  }, [accessToken, availability, demoSession, handleReset]);
+  }, [accessToken, demoSession, handleReset]);
 
   async function signIn(role: UserRole) {
     setPending(true);
@@ -131,6 +131,27 @@ export function DemoPanel({
     } finally {
       setPending(false);
     }
+  }
+
+  if (accessToken && demoSession) {
+    return (
+      <aside
+        className="demo-panel demo-panel--session"
+        aria-label="Демонстрационный режим"
+      >
+        <strong>Демо-режим</strong>
+        <p>Данные автоматически сбрасываются каждые 30 минут.</p>
+        <button
+          className="demo-panel__reset"
+          disabled={pending}
+          type="button"
+          onClick={() => void handleReset(false)}
+        >
+          Сбросить демо
+        </button>
+        {message && <p className="demo-panel__message" role="status">{message}</p>}
+      </aside>
+    );
   }
 
   if (accessToken || availability === "checking" || availability === "disabled") {
@@ -155,16 +176,6 @@ export function DemoPanel({
           <button disabled={pending} type="button" onClick={() => void signIn("student")}>
             Демо-студент
           </button>
-          {demoSession && (
-            <button
-              className="demo-panel__reset"
-              disabled={pending}
-              type="button"
-              onClick={() => void handleReset(false)}
-            >
-              Сбросить демо
-            </button>
-          )}
         </>
       )}
       {message && <p className="demo-panel__message" role="status">{message}</p>}

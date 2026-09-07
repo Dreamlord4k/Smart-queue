@@ -235,6 +235,7 @@ export function TeacherSession({
   const history = entries.filter((entry) =>
     ["done", "skipped", "absent"].includes(entry.status),
   );
+  const canChangeOrder = !["closed", "cancelled"].includes(session.status);
 
   return (
     <main className="teacher-page">
@@ -252,10 +253,16 @@ export function TeacherSession({
             <span className="teacher-badge">
               {session.frozen ? "Порядок заморожен" : "Порядок открыт"}
             </span>
-            {session.frozen && (
-              <button className="teacher-button" disabled={pending} onClick={unfreeze}>
-                Разморозить
-              </button>
+            {canChangeOrder && (
+              session.frozen ? (
+                <button className="teacher-button" disabled={pending} onClick={unfreeze}>
+                  Разморозить
+                </button>
+              ) : (
+                <button className="teacher-button" disabled={pending} onClick={freeze}>
+                  Заморозить список
+                </button>
+              )
             )}
           </div>
         </header>
@@ -265,9 +272,6 @@ export function TeacherSession({
 
         <section className="teacher-panel teacher-toolbar" aria-label="Управление сессией">
           <div className="teacher-actions">
-            {session.status === "planned" && !session.frozen && (
-              <button className="teacher-button" disabled={pending} onClick={freeze}>Заморозить список</button>
-            )}
             {session.status === "planned" && (
               <button
                 className="teacher-button teacher-button--primary"

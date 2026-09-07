@@ -114,7 +114,7 @@ describe("TeacherSession", () => {
     expect(html).not.toContain("Средняя ошибка ETA");
   });
 
-  it("показывает разморозку только для замороженного порядка", () => {
+  it("показывает симметричное управление порядком во время приёма", () => {
     const frozen = renderToStaticMarkup(
       <TeacherSession accessToken="token" session={session} initialQueue={queue} />,
     );
@@ -128,7 +128,21 @@ describe("TeacherSession", () => {
 
     expect(frozen).toContain("Разморозить");
     expect(open).toContain("Порядок открыт");
+    expect(open).toContain("Заморозить список");
     expect(open).not.toContain("Разморозить");
+  });
+
+  it("скрывает управление порядком после завершения", () => {
+    const html = renderToStaticMarkup(
+      <TeacherSession
+        accessToken="token"
+        session={{ ...session, status: "closed" }}
+        initialQueue={queue}
+      />,
+    );
+
+    expect(html).not.toContain("Разморозить");
+    expect(html).not.toContain("Заморозить список");
   });
 });
 
