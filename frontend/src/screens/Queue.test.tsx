@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -151,8 +154,7 @@ describe("Queue", () => {
     expect(html).toContain("Отказаться от этой сессии");
   });
 
-  it("показывает причину фиксации во внепоточном боковом диалоге", () => {
-    const html = renderToStaticMarkup(
+  it("показывает причину фиксации во внепоточном боковом диалоге", () => {    const html = renderToStaticMarkup(
       <LockReasonDrawer
         open
         reason="После пары"
@@ -166,5 +168,36 @@ describe("Queue", () => {
     expect(html).toContain('role="dialog"');
     expect(html).toContain('class="student-lock-drawer"');
     expect(html).toContain("После пары");
+  });
+});
+
+const studentCssPath = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "components",
+  "student",
+  "Student.css",
+);
+
+describe("видимость кнопок быстрого перемещения", () => {
+  it("на десктопе кнопки скрыты CSS, drag у своей записи есть", () => {
+    const css = readFileSync(studentCssPath, "utf8");
+    const baseBlock = css.match(/\.student-reorder-controls\s*\{[^}]*\}/);
+
+    expect(baseBlock?.[0]).toMatch(/display:\s*none/);
+
+    const html = renderToStaticMarkup(
+      <Queue accessToken={token("student-2")} sessionId="session-1" initialQueue={queue} />,
+    );
+    expect(html).toContain("В начало");
+    expect(html.match(/draggable="true"/g)).toHaveLength(1);
+  });
+
+  it("кнопки включаются только на узких тач-экранах", () => {
+    const css = readFileSync(studentCssPath, "utf8");
+
+    expect(css).toMatch(
+      /@media\s*\(max-width:\s*640px\)\s*and\s*\(pointer:\s*coarse\)[\s\S]*?\.student-reorder-controls\s*\{[^}]*display:\s*flex/,
+    );
   });
 });
