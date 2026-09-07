@@ -14,6 +14,7 @@ interface SettingsProps {
   api?: StudentApi;
   onBack?: () => void;
   onDeleted?: () => void;
+  demoMode?: boolean;
 }
 
 export function Settings({
@@ -22,6 +23,7 @@ export function Settings({
   api: suppliedApi,
   onBack,
   onDeleted,
+  demoMode = false,
 }: SettingsProps) {
   const api = useMemo(
     () => suppliedApi ?? createStudentApi(accessToken, apiBaseUrl),
@@ -103,7 +105,7 @@ export function Settings({
           <p>Тёмная тема бережёт глаза вечером. Выбор запоминается на этом устройстве.</p>
           <ThemeToggle />
         </section>
-        <section className="student-panel" aria-label="Удаление профиля">
+        {!demoMode && <section className="student-panel" aria-label="Удаление профиля">
           <h2>Удалить мой профиль</h2>
           <p>
             Аккаунт и связанные с ним записи будут удалены без возможности восстановления.
@@ -126,7 +128,7 @@ export function Settings({
           >
             {pending ? "Удаляем…" : "Удалить профиль навсегда"}
           </button>
-        </section>
+        </section>}
       </div>
     </main>
   );

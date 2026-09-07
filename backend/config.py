@@ -10,3 +10,12 @@ TELEGRAM_WEBHOOK_SECRET = os.environ.get("TELEGRAM_WEBHOOK_SECRET", "")
 TELEGRAM_LINK_CODE_TTL_SECONDS = 600
 TELEGRAM_SOFT_THRESHOLD_SECONDS = 900
 TELEGRAM_SOFT_INTERVAL_SECONDS = 45
+
+
+def demo_mode_enabled() -> bool:
+    return os.environ.get("DEMO_MODE", "false").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }

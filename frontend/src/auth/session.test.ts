@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ACCESS_TOKEN_KEY,
   REFRESH_TOKEN_KEY,
+  decodeDemoFromToken,
   fetchWithSession,
+  preferredTokenStorage,
   refreshStoredAccessToken,
   type TokenStorage,
 } from "./session";
@@ -83,5 +85,25 @@ describe("refresh-сессия", () => {
     );
     expect(storage.getItem(ACCESS_TOKEN_KEY)).toBeNull();
     expect(storage.getItem(REFRESH_TOKEN_KEY)).toBeNull();
+  });
+});
+
+describe("вкладочная demo-сессия", () => {
+  it("предпочитает sessionStorage только когда в нём есть demo-токен", () => {
+    const local = memoryStorage({ [ACCESS_TOKEN_KEY]: "regular" });
+    const perTab = memoryStorage({ [ACCESS_TOKEN_KEY]: "demo" });
+
+    expect(preferredTokenStorage(local, perTab)).toBe(perTab);
+    perTab.removeItem(ACCESS_TOKEN_KEY);
+    expect(preferredTokenStorage(local, perTab)).toBe(local);
+  });
+
+  it("читает demo-признак из JWT", () => {
+    const payload = btoa(JSON.stringify({ role: "student", demo: true }))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    expect(decodeDemoFromToken(`header.${payload}.signature`)).toBe(true);
   });
 });

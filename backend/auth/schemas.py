@@ -44,6 +44,10 @@ class LoginRequest(BaseModel):
         return str(value).strip().lower()
 
 
+class DemoLoginRequest(BaseModel):
+    role: UserRole
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

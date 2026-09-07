@@ -1,6 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import { decodeRoleFromToken, refreshStoredAccessToken, type UserRole } from "./auth/session";
+import {
+  browserDemoTokenStorage,
+  browserTokenStorage,
+  decodeDemoFromToken,
+  decodeRoleFromToken,
+  refreshStoredAccessToken,
+  saveTokens,
+  type TokenPair,
+  type UserRole,
+} from "./auth/session";
+import { DemoPanel } from "./components/DemoPanel";
 import { Login } from "./screens/Login";
 import { MyQueues } from "./screens/MyQueues";
 import { Queue } from "./screens/Queue";
@@ -21,10 +31,7 @@ export type AppRoute =
   | "/teacher/session";
 
 function readStoredToken(): string | null {
-  if (typeof window === "undefined" || !window.localStorage) {
-    return null;
-  }
-  return window.localStorage.getItem("access_token");
+  return browserTokenStorage()?.getItem("access_token") ?? null;
 }
 
 function routeForRole(role: UserRole): AppRoute {
@@ -38,6 +45,10 @@ interface AppProps {
 
 export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
   const [token, setToken] = useState<string | null>(() => readToken());
+  const [demoSession, setDemoSession] = useState(() =>
+    token ? decodeDemoFromToken(token) : false,
+  );
+  const [demoRevision, setDemoRevision] = useState(0);
   const [selectedQueueId, setSelectedQueueId] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<SessionSummary | null>(null);
   const [route, setRoute] = useState<AppRoute>(() => {
@@ -51,9 +62,25 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
   });
 
   function handleLoginSuccess(role: UserRole) {
-    setToken(readToken());
+    const storedToken = readToken();
+    setToken(storedToken);
+    setDemoSession(storedToken ? decodeDemoFromToken(storedToken) : false);
     setRoute(routeForRole(role));
   }
+
+  function handleDemoLogin(pair: TokenPair, role: UserRole) {
+    const storage = browserDemoTokenStorage();
+    if (storage) saveTokens(storage, pair);
+    setToken(pair.access_token);
+    setDemoSession(true);
+    setSelectedQueueId(null);
+    setSelectedSession(null);
+    setRoute(routeForRole(role));
+  }
+
+  const handleDemoReset = useCallback(() => {
+    setDemoRevision((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -75,12 +102,14 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
       .then((restoredToken) => {
         if (!restoredToken) return;
         setToken(restoredToken);
+        setDemoSession(decodeDemoFromToken(restoredToken));
         if (route === "/login" || route === "/register") {
           setRoute(routeForRole(decodeRoleFromToken(restoredToken) ?? "student"));
         }
       })
       .catch(() => {
         setToken(null);
+        setDemoSession(false);
         setRoute("/login");
       });
     // Восстановление выполняется один раз после запуска клиента.
@@ -98,6 +127,12 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
   // сегментом внутри карточки, остальные экраны — без дублей.
   return (
     <div className="app-root">
+      <DemoPanel
+        accessToken={token}
+        demoSession={demoSession}
+        onLogin={handleDemoLogin}
+        onReset={handleDemoReset}
+      />
       {visible === "/login" && <Login onSuccess={handleLoginSuccess} />}
       {visible === "/register" && <Register onSuccess={() => setRoute("/login")} />}
       {visible === "/queues" && token && (
@@ -106,6 +141,7 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
             <button className="student-button" type="button" onClick={() => setRoute("/settings")}>Настройки</button>
           </nav>
           <MyQueues
+            key={demoRevision}
             accessToken={token}
             onOpenQueue={(sessionId) => {
               setSelectedQueueId(sessionId);
@@ -116,6 +152,7 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
       )}
       {visible === "/queue" && token && selectedQueueId && (
         <Queue
+          key={demoRevision}
           accessToken={token}
           sessionId={selectedQueueId}
           onBack={() => setRoute("/queues")}
@@ -124,22 +161,27 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
       )}
       {visible === "/queue" && token && !selectedQueueId && (
         <MyQueues
+          key={demoRevision}
           accessToken={token}
           onOpenQueue={(sessionId) => setSelectedQueueId(sessionId)}
         />
       )}
       {visible === "/settings" && token && (
         <Settings
+          key={demoRevision}
           accessToken={token}
+          demoMode={demoSession}
           onBack={() => setRoute(selectedQueueId ? "/queue" : "/queues")}
           onDeleted={() => {
             setToken(null);
+            setDemoSession(false);
             setRoute("/login");
           }}
         />
       )}
       {visible === "/teacher" && token && (
         <TeacherDashboard
+          key={demoRevision}
           accessToken={token}
           onOpenSession={(session) => {
             setSelectedSession(session);
@@ -149,13 +191,18 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
       )}
       {visible === "/teacher/session" && token && selectedSession && (
         <TeacherSession
+          key={demoRevision}
           accessToken={token}
           session={selectedSession}
           onBack={() => setRoute("/teacher")}
         />
       )}
       {visible === "/teacher/session" && token && !selectedSession && (
-        <TeacherDashboard accessToken={token} onOpenSession={setSelectedSession} />
+        <TeacherDashboard
+          key={demoRevision}
+          accessToken={token}
+          onOpenSession={setSelectedSession}
+        />
       )}
     </div>
   );
