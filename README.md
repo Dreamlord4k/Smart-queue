@@ -17,9 +17,13 @@ cp .env.example .env
 docker compose up --build
 ```
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- Проверка живости: `GET http://localhost:8000/health` → `{"status":"ok"}`
+- Единая точка входа (frontend): http://localhost
+- API через nginx: http://localhost/api
+- WebSocket через nginx: `ws://localhost/ws/sessions/<id>`
+- Readiness: `GET http://localhost/health` проверяет backend, Postgres и Redis.
+
+Порты 5173 и 8000 также опубликованы для локальной диагностики, но приложение
+по умолчанию обращается к API через nginx.
 
 Остановка с удалением данных:
 
@@ -33,7 +37,10 @@ docker compose down -v
 |----------|-------------------|----------------|
 | Frontend | 5173              | `FRONTEND_PORT`|
 | Backend  | 8000              | `BACKEND_PORT` |
+| Nginx HTTP | 80              | `NGINX_HTTP_PORT` |
+| Nginx HTTPS | 443            | `NGINX_HTTPS_PORT` |
 | Postgres | внутренний 5432   | —              |
+| Redis    | внутренний 6379   | —              |
 
 Пример запуска backend на другом порту (порт 8000 уже занят):
 
@@ -61,7 +68,8 @@ docker compose run --rm \
   backend python -m pytest -q -p no:cacheprovider /tests
 ```
 
-Ожидается **53 passed**, включая сквозной синтетический сценарий.
+Ожидается **56 passed**, включая инфраструктурные проверки и сквозной
+синтетический сценарий.
 
 ## Frontend-проверки
 
@@ -78,14 +86,74 @@ npm run build
 с Docker и перезапустите compose.
 
 ```bash
-VITE_API_BASE_URL=http://192.168.1.10:8000
-CORS_ORIGINS=http://192.168.1.10:5173
-PUBLIC_BASE_URL=http://192.168.1.10:8000
+VITE_API_BASE_URL=http://192.168.1.10/api
+CORS_ORIGINS=http://192.168.1.10
+PUBLIC_BASE_URL=http://192.168.1.10
 ```
 
 - `VITE_API_BASE_URL` — адрес backend API, который вшит во frontend при сборке.
 - `CORS_ORIGINS` — адрес frontend, с которого backend разрешает запросы.
 - После смены переменных пересоберите frontend: `docker compose up --build`.
+
+## Telegram в локальной разработке
+
+Bot worker использует те же Postgres и Redis, что backend, и работает через
+Telegram long polling. Токен задаётся только в локальном `.env`:
+
+```bash
+TELEGRAM_BOT_TOKEN=<токен от BotFather>
+TELEGRAM_BOT_USERNAME=<username без @>
+```
+
+Файл `.env` не должен попадать в коммиты. Если токен пуст, контейнер остаётся запущенным, но
+опрос Telegram отключён; это позволяет поднять весь контур одной командой без
+публикации секрета. Webhook для локальной разработки не требуется.
+
+## Публичный HTTPS и Let's Encrypt
+
+Перед выпуском сертификата направьте DNS-запись домена на сервер и откройте
+входящие порты 80/443. Затем заполните в `.env`:
+
+```bash
+DOMAIN=queue.example.edu
+LETSENCRYPT_EMAIL=admin@example.edu
+PUBLIC_BASE_URL=https://queue.example.edu
+CORS_ORIGINS=https://queue.example.edu
+VITE_API_BASE_URL=https://queue.example.edu/api
+```
+
+Первичный выпуск выполняется из корня репозитория. Скрипт сначала поднимает
+HTTP-конфигурацию для ACME challenge, получает сертификат и переключает nginx
+на TLS:
+
+```bash
+./scripts/deploy/issue_certificate.sh
+```
+
+Проверить обе конфигурации без запуска сервисов:
+
+```bash
+docker compose config --quiet
+docker compose -f docker-compose.yml \
+  -f scripts/deploy/docker-compose.https.yml config --quiet
+```
+
+Для автоматического обновления запускайте скрипт ежедневно через cron или
+systemd timer; Certbot обновит сертификат только при приближении срока и после
+проверки nginx перечитает файлы:
+
+```cron
+17 3 * * * cd /srv/smart-queue && ./scripts/deploy/renew_certificate.sh
+```
+
+## CI
+
+GitHub Actions на каждый push и Pull Request в `main` устанавливает зависимости,
+проверяет обе compose-конфигурации, применяет миграции, запускает полный набор
+backend-тестов из `tests/` и smoke-прогон всего контура через nginx (health, API,
+frontend и WebSocket upgrade). Отдельный job запускает frontend-тесты и
+production-сборку. Это тот же набор обязательных проверок, который описан выше
+для локального запуска.
 
 ## Воспроизводимый демо-сценарий
 

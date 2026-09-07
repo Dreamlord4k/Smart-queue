@@ -39,8 +39,33 @@ jobs:
         run: pip install -r backend/requirements.txt
       - name: Apply migrations
         run: alembic -c backend/alembic.ini upgrade head
+      - name: Validate compose configuration
+        env:
+          DOMAIN: queue.example.edu
+          LETSENCRYPT_EMAIL: ci@example.edu
+        run: |
+          docker compose config --quiet
+          docker compose -f docker-compose.yml -f scripts/deploy/docker-compose.https.yml config --quiet
       - name: Backend tests
-        run: python -m pytest -q -p no:cacheprovider tests/auth tests/sessions tests/queue
+        run: python -m pytest -q -p no:cacheprovider tests
+      - name: Full compose smoke test
+        run: |
+          unset DB_URL JWT_SECRET
+          docker compose up --build --detach --wait
+          curl --fail --silent http://localhost/health
+          curl --fail --silent http://localhost/api/groups
+          curl --fail --silent http://localhost/
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --http1.1 --header 'Connection: Upgrade' --header 'Upgrade: websocket' \
+            --header 'Sec-WebSocket-Version: 13' \
+            --header 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' \
+            'http://localhost/ws/sessions/00000000-0000-0000-0000-000000000000?token=invalid')" = "403"
+      - name: Full compose logs
+        if: always()
+        run: docker compose logs --tail 20
+      - name: Stop full compose
+        if: always()
+        run: docker compose down --volumes
 
   frontend:
     runs-on: ubuntu-latest
@@ -49,12 +74,11 @@ jobs:
       - uses: actions/setup-node@v4.1.0
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
-      - name: Fix rollup optionals on linux
-        working-directory: frontend
-        run: npm install @rollup/rollup-linux-x64-gnu --no-save
       - name: Frontend tests
         working-directory: frontend
         run: npm test -- --run
