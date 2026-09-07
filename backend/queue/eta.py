@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from math import sqrt
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
-from backend.config import EMA_ALPHA, ETA_RANGE_K
+from backend.config import EMA_ALPHA
 from backend.models.queue_entry import QueueEntry, QueueEntryStatus
 from backend.models.session import Session, SessionStatus
 
 
 ACTIVE_STATUSES = (QueueEntryStatus.WAITING, QueueEntryStatus.CALLED)
+UNIVERSITY_TIME_ZONE = ZoneInfo("Asia/Yekaterinburg")
 
 
 def update_ema(
@@ -59,7 +60,7 @@ def calculate_eta_ranges(
     if reception.status == SessionStatus.PLANNED:
         service_time = timedelta(minutes=reception.duration_default)
         session_start = datetime.combine(
-            reception.date, reception.start_time, tzinfo=timezone.utc
+            reception.date, reception.start_time, tzinfo=UNIVERSITY_TIME_ZONE
         )
         return {
             entry.id: (
@@ -75,14 +76,6 @@ def calculate_eta_ranges(
         else float(reception.duration_default * 60)
     )
     service_time = timedelta(seconds=max(service_seconds, 0.0))
-    # До появления разброса по реальным наблюдениям используем консервативный
-    # prior: стандартное отклонение равно плановой длительности приёма.
-    uncertainty_seconds = (
-        sqrt(variance)
-        if variance > 0
-        else float(reception.duration_default * 60)
-    )
-    uncertainty = timedelta(seconds=ETA_RANGE_K * uncertainty_seconds)
     channel_free_at = [current_time for _ in range(reception.capacity)]
     result: dict[UUID, tuple[datetime, datetime]] = {}
 
@@ -103,8 +96,8 @@ def calculate_eta_ranges(
         )
         starts_at = channel_free_at[channel_index]
         result[entry.id] = (
-            max(current_time, starts_at - uncertainty),
-            starts_at + uncertainty,
+            starts_at,
+            starts_at + service_time,
         )
         channel_free_at[channel_index] = starts_at + service_time
 

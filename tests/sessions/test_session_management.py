@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
+import backend.routes.sessions as session_routes
 from backend.auth.dependencies import SessionLocal
 from backend.auth.security import create_access_token
 from backend.models.queue_entry import QueueEntry, QueueEntryStatus
@@ -190,6 +191,7 @@ def test_status_transitions_require_freeze_and_start_capacity_channels(
 
 def test_add_running_participant_to_end_with_eta_and_reject_duplicate(
     client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     teacher = add_user("teacher@example.com", UserRole.TEACHER)
     current = add_user("current@example.com", UserRole.STUDENT)
@@ -209,6 +211,12 @@ def test_add_running_participant_to_end_with_eta_and_reject_duplicate(
         called.called_at = now
         db.commit()
     url = f"/sessions/{reception.id}/participants"
+    published: list[tuple[object, str]] = []
+    monkeypatch.setattr(
+        session_routes,
+        "publish_session_event",
+        lambda session_id, event: published.append((session_id, event)),
+    )
 
     response = client.post(
         url,
@@ -217,10 +225,19 @@ def test_add_running_participant_to_end_with_eta_and_reject_duplicate(
     )
 
     assert response.status_code == 201
-    added = response.json()["active_queue"][-1]
+    active_queue = response.json()["active_queue"]
+    added = active_queue[-1]
     assert added["student_id"] == str(candidate.id)
     assert added["position"] == 3
     assert added["eta_start"] is not None
+    assert [item["position"] for item in active_queue] == [1, 2, 3]
+    windows = [
+        (datetime.fromisoformat(item["eta_start"]), datetime.fromisoformat(item["eta_end"]))
+        for item in active_queue
+        if item["eta_start"] is not None and item["eta_end"] is not None
+    ]
+    assert all(end <= next_start for (_, end), (next_start, _) in zip(windows, windows[1:]))
+    assert published == [(reception.id, "participant.added")]
     duplicate = client.post(
         url,
         headers=authorization(teacher),

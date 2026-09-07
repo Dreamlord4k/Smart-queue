@@ -76,16 +76,16 @@ def test_eta_greedily_uses_earliest_of_two_channels() -> None:
     )
 
     assert result[waiting_first.id] == (
-        now + timedelta(seconds=99),
-        now + timedelta(seconds=101),
+        now + timedelta(seconds=100),
+        now + timedelta(seconds=700),
     )
     assert result[waiting_second.id] == (
-        now + timedelta(seconds=399),
-        now + timedelta(seconds=401),
+        now + timedelta(seconds=400),
+        now + timedelta(seconds=1000),
     )
 
 
-def test_eta_range_uses_variance() -> None:
+def test_active_eta_is_a_non_overlapping_service_window() -> None:
     now = datetime(2026, 9, 8, 10, 0, tzinfo=timezone.utc)
     reception = Session(
         id=uuid4(),
@@ -125,8 +125,8 @@ def test_eta_range_uses_variance() -> None:
     )
 
     assert result[waiting.id] == (
-        now + timedelta(seconds=500),
-        now + timedelta(seconds=700),
+        now + timedelta(seconds=600),
+        now + timedelta(seconds=1200),
     )
 
 
@@ -167,6 +167,33 @@ def test_free_channels_share_start_but_keep_non_zero_range_without_stats() -> No
     assert {result[entry.id][1] for entry in waiting} == {
         now + timedelta(minutes=reception.duration_default)
     }
+
+
+def test_planned_eta_uses_yekaterinburg_local_session_time() -> None:
+    reception = Session(
+        id=uuid4(),
+        teacher_id=uuid4(),
+        course_name="Алгоритмы",
+        room="Р-123",
+        date=date(2026, 9, 8),
+        start_time=time(19, 45),
+        duration_default=15,
+        capacity=1,
+        status=SessionStatus.PLANNED,
+        frozen=False,
+    )
+    waiting = QueueEntry(
+        id=uuid4(),
+        session_id=reception.id,
+        student_id=uuid4(),
+        position=1,
+        status=QueueEntryStatus.WAITING,
+    )
+
+    start, end = calculate_eta_ranges(reception, [waiting])[waiting.id]
+
+    assert start.isoformat() == "2026-09-08T19:45:00+05:00"
+    assert end.isoformat() == "2026-09-08T20:00:00+05:00"
 
 
 @pytest.mark.parametrize("real_time", [-1.0])

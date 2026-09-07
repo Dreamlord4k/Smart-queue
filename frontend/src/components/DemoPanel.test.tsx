@@ -13,18 +13,21 @@ describe("DemoPanel", () => {
     expect(DEMO_RESET_INTERVAL_MS).toBe(30 * 60 * 1000);
   });
 
-  it("показывает обе роли и сброс только внутри demo-сессии", () => {
-    const regular = renderToStaticMarkup(
+  it("показывает панель только гостю", () => {
+    const guest = renderToStaticMarkup(
       <DemoPanel initialAvailability="available" demoSession={false} />,
     );
-    const demo = renderToStaticMarkup(
-      <DemoPanel initialAvailability="available" demoSession />,
+    const authorized = renderToStaticMarkup(
+      <DemoPanel
+        accessToken="token"
+        initialAvailability="available"
+        demoSession={false}
+      />,
     );
 
-    expect(regular).toContain("Демо-препод");
-    expect(regular).toContain("Демо-студент");
-    expect(regular).not.toContain("Сбросить демо");
-    expect(demo).toContain("Сбросить демо");
+    expect(guest).toContain("Демо-препод");
+    expect(guest).toContain("Демо-студент");
+    expect(authorized).toBe("");
   });
 
   it("объясняет, как восстановить отсутствующий seed", () => {

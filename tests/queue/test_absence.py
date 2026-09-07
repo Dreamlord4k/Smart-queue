@@ -92,7 +92,7 @@ def test_absence_keeps_row_normalizes_positions_and_recalculates_eta(
     assert body["absence_reason"] == "Совпадает с экзаменом"
     assert [item["position"] for item in body["active_queue"]] == [1, 2]
     assert body["active_queue"][1]["student_id"] == str(third.id)
-    assert body["active_queue"][1]["eta_start"] == "2026-09-08T10:15:00Z"
+    assert body["active_queue"][1]["eta_start"] == "2026-09-08T10:15:00+05:00"
 
     with SessionLocal() as db:
         saved = db.get(QueueEntry, entries[1].id)

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import "../theme.css";
+import {
+  formatUniversitySessionStart,
+  formatUniversityTime,
+  UNIVERSITY_TIME_NOTE,
+} from "../utils/time";
 
 export type QueueStatus = "waiting" | "called" | "done" | "skipped" | "absent";
 
@@ -64,13 +69,7 @@ function formatEta(card: MyQueueCard): string {
   if (!card.eta_start || !card.eta_end) {
     return "Не рассчитывается";
   }
-  const options: Intl.DateTimeFormatOptions = {
-    hour: "2-digit",
-    minute: "2-digit",
-  };
-  return `${new Date(card.eta_start).toLocaleTimeString("ru-RU", options)}–${new Date(
-    card.eta_end,
-  ).toLocaleTimeString("ru-RU", options)}`;
+  return `${formatUniversityTime(card.eta_start)}–${formatUniversityTime(card.eta_end)}`;
 }
 
 export function MyQueues({
@@ -136,9 +135,9 @@ export function MyQueues({
           <article key={card.entry_id} data-testid={`queue-${card.entry_id}`} className="mq-card anim-rise">
             <h2>{card.course_name}</h2>
             <p>{card.teacher_name}, аудитория {card.room}</p>
-            <p>{card.date} в {card.start_time.slice(0, 5)}</p>
+            <p>{formatUniversitySessionStart(card.date, card.start_time)} ({UNIVERSITY_TIME_NOTE})</p>
             <p>Позиция: {card.position ?? "—"}</p>
-            <p>ETA: {formatEta(card)}</p>
+            <p>ETA: {formatEta(card)} ({UNIVERSITY_TIME_NOTE})</p>
             <p>Статус: {statusLabels[card.status]}</p>
             {overlaps.has(card.entry_id) && (
               <p role="status" className="mq-warn">
