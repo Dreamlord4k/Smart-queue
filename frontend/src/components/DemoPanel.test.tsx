@@ -13,7 +13,7 @@ describe("DemoPanel", () => {
     expect(DEMO_RESET_INTERVAL_MS).toBe(30 * 60 * 1000);
   });
 
-  it("показывает панель только гостю", () => {
+  it("показывает кнопки входа только гостю", () => {
     const guest = renderToStaticMarkup(
       <DemoPanel initialAvailability="available" demoSession={false} />,
     );
@@ -28,6 +28,21 @@ describe("DemoPanel", () => {
     expect(guest).toContain("Демо-препод");
     expect(guest).toContain("Демо-студент");
     expect(authorized).toBe("");
+  });
+
+  it("оставляет в авторизованной demo-сессии индикатор и сброс", () => {
+    const html = renderToStaticMarkup(
+      <DemoPanel
+        accessToken="demo-token"
+        initialAvailability="available"
+        demoSession
+      />,
+    );
+
+    expect(html).toContain("Демо-режим");
+    expect(html).toContain("Сбросить демо");
+    expect(html).not.toContain("Демо-препод");
+    expect(html).not.toContain("Демо-студент");
   });
 
   it("объясняет, как восстановить отсутствующий seed", () => {
