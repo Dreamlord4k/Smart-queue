@@ -11,6 +11,11 @@ import type {
   SessionStatus,
   SessionSummary,
 } from "../types/teacher";
+import {
+  formatUniversitySessionStart,
+  formatUniversityTime,
+  UNIVERSITY_TIME_NOTE,
+} from "../utils/time";
 
 interface TeacherSessionProps {
   accessToken: string;
@@ -33,9 +38,7 @@ const statusLabels: Record<SessionStatus, string> = {
 
 function etaLabel(entry: QueueEntryState): string {
   if (!entry.eta_start || !entry.eta_end) return "ETA не рассчитан";
-  const format = (value: string) =>
-    new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  return `ETA ${format(entry.eta_start)}–${format(entry.eta_end)}`;
+  return `ETA ${formatUniversityTime(entry.eta_start)}–${formatUniversityTime(entry.eta_end)} (${UNIVERSITY_TIME_NOTE})`;
 }
 
 function secondsLabel(value: number | null): string {
@@ -171,7 +174,7 @@ export function TeacherSession({
             <p className="teacher-eyebrow">{statusLabels[session.status]}</p>
             <h1 className="teacher-title">{session.course_name}</h1>
             <p className="teacher-muted">
-              {session.date} в {session.start_time.slice(0, 5)}, аудитория {session.room}
+              {formatUniversitySessionStart(session.date, session.start_time)} ({UNIVERSITY_TIME_NOTE}), аудитория {session.room}
             </p>
           </div>
           <span className="teacher-badge">

@@ -133,7 +133,9 @@ export function DemoPanel({
     }
   }
 
-  if (availability === "checking" || availability === "disabled") return null;
+  if (accessToken || availability === "checking" || availability === "disabled") {
+    return null;
+  }
 
   return (
     <aside className="demo-panel" aria-label="Демонстрационный режим">

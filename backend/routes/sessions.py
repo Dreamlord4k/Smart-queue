@@ -513,6 +513,7 @@ def add_participant(
     db.add(entry)
     db.flush()
     active_entries.append(entry)
+    normalize_active_positions(active_entries)
     response = ParticipantMutationResponse(
         session_id=session_id,
         entry_id=entry.id,

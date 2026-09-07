@@ -9,6 +9,7 @@ import type {
   GroupWithStudents,
   SessionSummary,
 } from "../types/teacher";
+import { formatUniversitySessionStart, UNIVERSITY_TIME_NOTE } from "../utils/time";
 
 interface TeacherDashboardProps {
   accessToken: string;
@@ -49,7 +50,7 @@ function SessionCard({
         <span>{session.capacity} канал(а)</span>
       </div>
       <h3>{session.course_name}</h3>
-      <p>{session.date} в {session.start_time.slice(0, 5)}</p>
+      <p>{formatUniversitySessionStart(session.date, session.start_time)} ({UNIVERSITY_TIME_NOTE})</p>
       <p>Аудитория {session.room}, {session.duration_default} мин/студент</p>
       <p className="teacher-muted">
         {session.frozen ? "Порядок заморожен" : "Порядок ещё открыт"}

@@ -16,6 +16,7 @@ import type {
   StudentQueueEntry,
   StudentQueueState,
 } from "../types/student";
+import { formatUniversityTime, UNIVERSITY_TIME_NOTE } from "../utils/time";
 
 interface QueueProps {
   accessToken: string;
@@ -188,9 +189,7 @@ export function LockReasonDrawer({
 
 function etaLabel(entry: StudentQueueEntry): string {
   if (!entry.eta_start || !entry.eta_end) return "ETA не рассчитан";
-  const format = (value: string) =>
-    new Date(value).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  return `ETA ${format(entry.eta_start)}–${format(entry.eta_end)}`;
+  return `ETA ${formatUniversityTime(entry.eta_start)}–${formatUniversityTime(entry.eta_end)} (${UNIVERSITY_TIME_NOTE})`;
 }
 
 export function Queue({
