@@ -1,49 +1,271 @@
 # Умная очередь
 
-Живая очередь на сдачу лабораторных и экзаменов без толпы под дверью.
-Преподаватель ведёт приём одной кнопкой, студент видит свою позицию
-и время-окно, а не «ждите, вас позовут». Для студентов и преподавателей
-ИРИТ-РТФ: часы ожидания у аудитории превращаются в точный ETA и три
-Telegram-уведомления — «скоро», «подходите», «заходите».
+Smart Queue — система управления потоком людей и временем ожидания.
+Первый сценарий — экзамены и лабораторные работы в вузе, но механизм
+очереди не привязан к ним и переносится на любой процесс с очередью.
 
-## Что реализовано
+## Проблема
 
-Всё из `TASKS.md` (T-001–T-014, все DONE):
+- Студент не знает, когда его примут, и вынужден ждать возле аудитории.
+- Преподаватель вручную управляет порядком: опоздания, пропуски,
+  перестановки и постоянные вопросы «кто следующий?».
+- Время приёма трудно прогнозировать: статичный список не учитывает,
+  кто идёт быстрее, а кто медленнее.
 
-- **Аккаунты** — регистрация/логин, JWT access+refresh, роли студент/преподаватель, группы, удаление профиля.
-- **Сессии** — создание с мультивыбором групп и студентов, очередь сразу по алфавиту; дашборд преподавателя; старт/пауза/закрытие/отмена, длительность на лету, добавление и удаление участников, заморозка списка.
-- **Очереди студента** — «Мои очереди», отказ от сессии с причиной, self-reorder только своей карточки, фиксация места с `lock_reason`, завершение и пропуск преподавателем, несколько параллельных каналов (`capacity`).
-- **ETA/EMA** — скользящее среднее фактического времени (`alpha=0.3`), дисперсия, жадный пересчёт по каналам, диапазон вместо точной цифры.
-- **Отчёты** — принято/пропущено, средняя длительность, плановое vs фактическое время, средняя ошибка ETA.
-- **Реалтайм** — Redis pub/sub (`session:{id}`), WebSocket, fallback-опрос каждые 5 секунд.
-- **Telegram** — привязка одноразовым кодом, webhook с секретом, три уведомления (мягкое/буфер/финал), дедупликация, локально — long polling.
-- **CI** — GitHub Actions на push/PR в `main`: миграции, pytest, smoke всего контура, тесты и сборка фронта.
-- **Режим комиссии** — быстрый вход двумя ролями, живые DEMO-UI очереди и восстановление стенда одной кнопкой.
+## Решение
 
-Подробности: `PRODUCT.md`, `docs/TECH_SPEC.md`, `PLAN.md`, `TASKS.md`.
+- Преподаватель создаёт сессию и добавляет участников — система формирует очередь.
+- Студент видит свою позицию и динамический ETA (расчётное время ожидания, временное окно).
+- Преподаватель управляет приёмом одной кнопкой; очередь пересчитывается
+  после каждого фактического изменения (завершение, пропуск, отказ, перестановка).
+- Realtime и Telegram позволяют студенту не дежурить у аудитории.
 
-## Свои секреты
+## Для кого
+
+### Студент
+
+Сидит у аудитории и ждёт своей защиты: видит позицию, временное окно
+и статус, получает уведомления, может сам подвинуть свою карточку,
+зафиксировать место или отказаться от сессии с причиной.
+
+### Преподаватель
+
+Ведёт приём: видит всех участников и их состояния, завершает и пропускает
+одной кнопкой, добавляет опоздавших на лету, замораживает порядок,
+закрывает сессию с отчётом.
+
+## Features
+
+### Для студента
+
+- Личные очереди: предмет, преподаватель, аудитория, дата и время, позиция, статус.
+- Динамический ETA — пересчёт после каждого изменения очереди.
+- Reorder только собственной карточки (drag-and-drop или кнопки на тач-экранах).
+- Lock места с необязательной причиной.
+- Отказ от конкретной сессии с отдельной причиной (запись остаётся в истории).
+- Telegram-уведомления: «скоро», «подходите», «заходите».
+- Живые обновления без перезагрузки страницы.
+
+### Для преподавателя
+
+- Создание сессии с мультивыбором групп и отдельных студентов.
+- Добавление студента в очередь, в том числе опоздавшего, без пересоздания
+  сессии (доступно, пока сессия не закрыта и не отменена).
+- Управление приёмом: done / skip одной кнопкой; следующий поднимается автоматически.
+- Freeze списка: после заморозки порядок не меняет никто.
+- Изменение длительности приёма на лету.
+- Несколько параллельных каналов через `capacity`.
+- Отчёт после закрытия: принято/пропущено, средняя длительность,
+  плановое vs фактическое время, средняя ошибка ETA.
+
+Подробности продукта: `PRODUCT.md`, `docs/TECH_SPEC.md`, `PLAN.md`, `TASKS.md`.
+
+## Польза для преподавателя
+
+- Меньше ручного управления очередью и объявлений «кто следующий».
+- Всегда видно актуальное состояние участников и их причины.
+- Пропуски и опоздания обрабатываются парой кликов, опоздавшего можно
+  добавить прямо в текущую очередь.
+- После завершения приёма следующий участник поднимается автоматически.
+- Параллельные каналы (`capacity`) для потока из нескольких проверяющих.
+- После сессии — данные о ходе приёма и точности ETA.
+
+## До и после
+
+### Без системы
+
+- Студент не знает, когда его примут.
+- Преподаватель вручную управляет порядком.
+- Много вопросов «кто следующий?».
+- Пропуски и опоздания требуют ручной обработки.
+- Время приёма трудно прогнозировать.
+
+### С Smart Queue
+
+- Студент видит позицию и временное окно.
+- Порядок управляется системой.
+- Следующий участник назначается автоматически.
+- Пропуски и отказы учитываются в состоянии очереди.
+- ETA пересчитывается по фактическому времени приёма.
+
+## Как это работает
+
+### ETA для пользователя
+
+ETA — динамическое окно времени, а не точная минута. Это прогноз:
+система смотрит, сколько длился приём по факту, и сдвигает окно
+всех остальных. Прогноз может ошибаться — отчёт после сессии показывает,
+насколько именно.
+
+### ETA для разработчика
+
+Используется EMA:
+
+```text
+new_average = alpha * actual_duration + (1 - alpha) * old_average
+```
+
+В текущей реализации `alpha = 0.3` (`backend/config.py`, `EMA_ALPHA`).
+Первое наблюдение становится начальным средним; дисперсия ведётся
+экспоненциальным сглаживанием и задаёт ширину окна. При `capacity > 1`
+прогноз жадно распределяется по нескольким каналам
+(`backend/queue/eta.py`). ETA всегда остаётся прогнозом, а не гарантией.
+
+### Realtime
+
+```text
+Backend → PostgreSQL commit → Redis Pub/Sub → WebSocket → Frontend
+```
+
+WebSocket — быстрый путь. Опрос примерно каждые 5 секунд — страховка
+от рассинхронизации при обрыве соединения. Важно: Redis здесь только
+шина событий, а не основная база данных — источником правды остаётся PostgreSQL.
+
+## Architecture
+
+```text
+Browser
+  |
+  v
+NGINX (единая внешняя точка входа)
+  |
+  +-----> Frontend (React/Vite)
+  |
+  +-----> FastAPI backend
+            |
+      +-----+-----+
+      |           |
+      v           v
+  PostgreSQL   Redis
+  (данные)     (Pub/Sub)
+      |
+      v
+  WebSocket ---> Browser
+
+FastAPI / notification worker ---> Telegram Bot API (внешняя интеграция)
+```
+
+- **PostgreSQL** — persistent business state, source of truth.
+- **Redis** — realtime/event distribution, состояние переживает рестарт по необходимости.
+- **FastAPI** — business logic и API.
+- **React/Vite** — frontend.
+- **NGINX** — reverse proxy и единая внешняя точка входа.
+- **Docker Compose** — orchestration нескольких контейнеров.
+
+## Tech Stack
+
+### Backend
+
+- Python 3.12
+- FastAPI
+- SQLAlchemy 2.0
+- Alembic
+- PyJWT, argon2-cffi, httpx, redis-py
+
+### Frontend
+
+- React 19
+- Vite 7
+- TypeScript
+- Vitest
+
+### Infrastructure
+
+- PostgreSQL 16
+- Redis 7
+- Docker
+- Docker Compose
+- NGINX 1.27
+
+### Integrations
+
+- Telegram Bot API
+
+### CI
+
+- GitHub Actions
+
+## Quick Start
+
+### Requirements
+
+- Docker и Docker Compose.
+- Для frontend-проверок отдельно: Node.js 22 и npm.
+
+### Свои секреты
 
 ```bash
 cp .env.example .env
 openssl rand -hex 32
 ```
 
-Сгенерированную строку впишите в `.env`:
-
 ```bash
 POSTGRES_PASSWORD=<случайный пароль>
 JWT_SECRET=<вывод openssl rand -hex 32>
 ```
 
-- `TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` нужны только для
-глобального запуска с настоящим ботом; локально оставьте пустыми.
-- Реальные значения — только в локальном `.env`, он не коммитится.
+`TELEGRAM_BOT_TOKEN` и `TELEGRAM_WEBHOOK_SECRET` нужны только для запуска
+с настоящим ботом; локально оставьте пустыми. Реальные значения — только
+в локальном `.env`, он не коммитится.
 
-## Единый мастер развёртывания
+### Run
 
-Скрипт сам показывает текущее состояние и предлагает локальный запуск,
-production HTTPS, безопасное обновление, досев групп или диагностику:
+```bash
+docker compose up --build
+```
+
+- Приложение: http://localhost (nginx → frontend + API)
+- Напрямую: frontend http://localhost:5173, API http://localhost:8000
+- Демо с телефона в той же сети — в `.env`:
+
+```bash
+CORS_ORIGINS=http://192.168.1.10
+VITE_API_BASE_URL=http://192.168.1.10/api
+PUBLIC_BASE_URL=http://192.168.1.10
+```
+
+### Check
+
+```bash
+curl http://localhost/health
+```
+
+Проверяет backend, Postgres и Redis (503, если что-то недоступно).
+Миграции применяются сами при старте backend (`alembic upgrade head`
+в CMD образа). Вручную:
+
+```bash
+docker compose exec backend alembic -c /workspace/backend/alembic.ini upgrade head
+```
+
+### Stop
+
+```bash
+docker compose down
+```
+
+> НЕ используйте `docker compose down -v`, если нужно сохранить данные
+> PostgreSQL — флаг `-v` удаляет volumes вместе с базой.
+
+## Configuration
+
+Все переменные — в `.env.example`: порты (`BACKEND_PORT`, `NGINX_HTTP_PORT`,
+`NGINX_HTTPS_PORT`), `DB_URL`, `JWT_SECRET` и TTL токенов, `CORS_ORIGINS`,
+`VITE_API_BASE_URL`, `PUBLIC_BASE_URL`, Telegram (`TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`), `DOMAIN` и
+`LETSENCRYPT_EMAIL` для HTTPS. Порт backend меняется так:
+
+```bash
+BACKEND_PORT=18000 docker compose up --build backend
+```
+
+## Deployment
+
+Короткий сценарий: `.env` → запуск → HTTPS → webhook → обновление.
+
+Есть единый мастер, который показывает состояние и предлагает локальный
+запуск, production HTTPS, безопасное обновление, досев групп или диагностику
+(`.env` не перезаписывает, volumes не удаляет):
 
 ```bash
 ./scripts/deploy/setup.sh
@@ -53,39 +275,7 @@ production HTTPS, безопасное обновление, досев груп
 powershell -ExecutionPolicy Bypass -File .\scripts\deploy\setup.ps1
 ```
 
-Enter без выбора запускает только проверку здоровья и ничего не меняет.
-Существующий `.env` никогда не перезаписывается, volumes не удаляются,
-а production-сценарий останавливается на явных плейсхолдерах секретов.
-Для автоматизированного запуска доступны `--scenario 1..5` в bash и
-`-Scenario 1..5` в PowerShell; HTTPS дополнительно включается `--https`/`-Https`.
-
-## Запуск локально
-
-```bash
-docker compose up --build
-```
-
-- Приложение: http://localhost (nginx → frontend + API)
-- Напрямую: frontend http://localhost:5173, API http://localhost:8000
-- Health: `curl http://localhost/health`
-- Порт backend меняется так: `BACKEND_PORT=18000 docker compose up --build backend`
-- Миграции применяются сами при старте backend. Вручную:
-
-```bash
-docker compose exec backend alembic -c /workspace/backend/alembic.ini upgrade head
-```
-
-Остановка с удалением данных: `docker compose down -v`
-
-Демо с телефона в той же сети — в `.env`:
-
-```bash
-CORS_ORIGINS=http://192.168.1.10
-VITE_API_BASE_URL=http://192.168.1.10/api
-PUBLIC_BASE_URL=http://192.168.1.10
-```
-
-## Запуск глобально (домен + HTTPS)
+### Production (домен + HTTPS)
 
 Направьте A-запись домена на сервер (регистратор или DuckDNS),
 откройте порты 80/443 и заполните в `.env`:
@@ -96,12 +286,7 @@ LETSENCRYPT_EMAIL=admin@example.edu
 PUBLIC_BASE_URL=https://queue.example.edu
 CORS_ORIGINS=https://queue.example.edu
 VITE_API_BASE_URL=https://queue.example.edu/api
-TELEGRAM_BOT_TOKEN=<токен от BotFather>
-TELEGRAM_BOT_USERNAME=<username без @>
-TELEGRAM_WEBHOOK_SECRET=<случайная строка>
 ```
-
-Выпуск сертификата и переход nginx на TLS:
 
 ```bash
 ./scripts/deploy/issue_certificate.sh
@@ -120,7 +305,9 @@ docker compose -f docker-compose.yml -f scripts/deploy/docker-compose.https.yml 
 17 3 * * * cd /srv/smart-queue && ./scripts/deploy/renew_certificate.sh
 ```
 
-Webhook Telegram (секрет сверяется с заголовком `X-Telegram-Bot-Api-Secret-Token`):
+### Telegram webhook
+
+Секрет сверяется с заголовком `X-Telegram-Bot-Api-Secret-Token`:
 
 ```bash
 curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
@@ -130,7 +317,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 
 Локально webhook не нужен — бот работает в long polling, без токена опрос отключён.
 
-## Обновление на боевом сервере
+### Обновление на боевом сервере
 
 ```bash
 git pull origin main
@@ -143,45 +330,19 @@ docker compose up --build -d
 docker compose -f docker-compose.yml -f scripts/deploy/docker-compose.https.yml up --build -d
 ```
 
-Проверка после обновления:
+Проверка:
 
 ```bash
 docker compose exec backend alembic -c /workspace/backend/alembic.ini upgrade head
 curl https://<домен>/health
 ```
 
-Что сохраняется, а что нет:
+Данные и сессии сохраняются (Postgres в volume, без `-v`). Токены живы,
+пока тот же `JWT_SECRET`. `.env` не перезаписывать. Фронт после — Ctrl+F5.
 
-- Данные и сессии сохраняются: Postgres живёт в volume — главное, не добавлять `-v` к `down`.
-- Токены живы, пока тот же `JWT_SECRET` — refresh продолжает работать без перелогина.
-- `.env` не перезаписывать: `git pull` его не трогает, образец лежит в `.env.example`.
-- Фронт после обновления — жёсткая перезагрузка в браузере (Ctrl+F5), иначе старый бандл из кэша.
+## Testing
 
-## Демо-панель для комиссии
-
-В `.env` включите режим и перезапустите backend:
-
-```bash
-DEMO_MODE=true
-docker compose up --build -d backend frontend nginx
-```
-
-Один раз создайте стабильный набор данных (повторный запуск безопасно его восстановит):
-
-```bash
-docker compose run --rm --no-deps -v "$PWD/scripts:/workspace/scripts:ro" \
-  backend python /workspace/scripts/seed_demo_ui.py
-```
-
-Слева появятся кнопки «Демо-препод» и «Демо-студент». Откройте их в разных
-вкладках: токены хранятся отдельно для каждой вкладки, а изменения активной
-очереди передаются через realtime. Кнопка «Сбросить демо» восстанавливает
-исходные две очереди; открытая demo-вкладка делает тот же сброс каждые 30 минут.
-При `DEMO_MODE=false` панель и demo-login недоступны.
-
-## Тесты
-
-Backend (в контейнере, всего 50+):
+Backend (в контейнере):
 
 ```bash
 docker compose run --rm -v "$PWD/scripts:/workspace/scripts:ro" \
@@ -196,9 +357,70 @@ docker compose run --rm -v "$PWD/scripts:/workspace/scripts:ro" \
 cd frontend && npm ci && npm test -- --run && npm run build
 ```
 
+CI (GitHub Actions на push/PR в `main`, автоматического деплоя нет — это CI, не CD):
+
+- backend: зависимости, миграции, проверка compose-конфигов, pytest, smoke всего контура (health, API, frontend, WebSocket upgrade);
+- frontend: тесты и production-сборка.
+
+## Reliability and Recovery
+
+- PostgreSQL — persistent state в volume `postgres_data`; данные переживают
+  пересоздание контейнеров.
+- Redis можно пересоздать: источник правды — Postgres, очередь восстанавливается из базы.
+- Backend можно перезапускать: миграции идемпотентны (`upgrade head`).
+- Клиент после обрыва догоняет состояние опросом каждые 5 секунд.
+- Backup нужен прежде всего для PostgreSQL.
+
+> Для production следующий этап — автоматизировать регулярный PostgreSQL
+> backup и проверку восстановления (сейчас автоматизации нет).
+
+## Демо-панель для комиссии
+
+В `.env` включите режим и перезапустите backend:
+
+```bash
+DEMO_MODE=true
+docker compose up --build -d backend frontend nginx
+```
+
+Один раз создайте стабильный набор данных:
+
+```bash
+docker compose run --rm --no-deps -v "$PWD/scripts:/workspace/scripts:ro" \
+  backend python /workspace/scripts/seed_demo_ui.py
+```
+
+Слева появятся кнопки «Демо-препод» и «Демо-студент». Откройте их в разных
+вкладках: токены хранятся отдельно для каждой вкладки, а изменения активной
+очереди передаются через realtime. Кнопка «Сбросить демо» восстанавливает
+исходные две очереди; открытая demo-вкладка делает тот же сброс каждые 30 минут.
+При `DEMO_MODE=false` панель и demo-login недоступны.
+
+## Demo Account
+
+> Только синтетическая учётная запись для демонстрации.
+> Реальных персональных данных не содержит.
+
+Логин `demo.t013.demo.student01@example.com` … `student10@example.com`,
+преподаватель `demo.t013.demo.teacher@example.com`, пароль `Demo-T013-Password!`
+(создаются `scripts/generate_demo_data.py`, значение по умолчанию в коде скрипта).
+
 ## Как увидеть живьём
 
-Синтетика (2 группы, 10 студентов, 2 сессии; логин `demo.t013.demo.student01@example.com`, пароль `Demo-T013-Password!`):
+Короткий сценарий защиты:
+
+1. Открыть teacher (демо-препод).
+2. Открыть student в другом окне (демо-студент).
+3. Открыть очередь.
+4. Показать ETA-окно студента.
+5. Изменить состояние очереди (отказ/перестановка).
+6. Показать realtime без refresh во втором окне.
+7. Показать freeze и lock.
+8. Показать done/skip.
+9. Показать `capacity=2` (два канала).
+10. Показать отчёт план/факт.
+
+Синтетика для сценария (2 группы, 10 студентов, 2 сессии):
 
 ```bash
 docker compose up -d postgres redis backend frontend
@@ -212,56 +434,55 @@ docker compose run --rm --no-deps -v "$PWD/scripts:/workspace/scripts:ro" \
   python /workspace/scripts/run_demo_scenario.py
 ```
 
-Сценарий ставит пять `✓`: отказ, reorder + lock, freeze, `done`/`skip` с пересчётом, отчёты. Без внешней отправки: realtime читается из Redis, Telegram идёт в fake-транспорт (29 сообщений, 0 запросов наружу).
+Сценарий ставит пять `✓`: отказ, reorder + lock, freeze, `done`/`skip` с пересчётом, отчёты.
+Telegram идёт в fake-транспорт (29 сообщений, 0 запросов наружу). Для мгновенного
+прогона добавьте `--delay-scale 0`. Вручную те же шаги видны в двух окнах:
+позиции и окна времени пересчитываются сразу в обоих.
 
-Вручную в двух окнах (студент + преподаватель):
+## Troubleshooting
 
-- **ETA** — откройте «Мои очереди» в двух окнах, нажмите «Завершить текущую»: позиции и окна времени пересчитаются сразу в обоих.
-- **Фиксация** — студент ставит чек-марк с причиной, карточка блокируется для перестановки.
-- **Freeze** — после «Заморозить список» drag-and-drop отклоняется сервером.
-- **Done/skip** — канал освобождается, следующий вызывается автоматически, ETA пересчитывается при `capacity=2`.
-- **Отчёт** — после «Закрыть сессию»: принято/пропущено, план vs факт, ошибка ETA.
-- **Realtime** — события прилетают по WebSocket; при обрыве — опрос каждые 5 секунд.
+### Port already in use
 
-## AI-ассистенты
+`Bind 0.0.0.0:8000` — старый стенд не погашен или хвост Docker держит проброс:
+`docker compose down`, висящих найти (`lsof -i :PORT`, `docker ps -a`) и снести,
+либо соседние порты. Переменные — в одной строке с командой или через `export`.
 
-Кто что делал (история — в `docs/agent/tasks`, там же владельцы по задачам):
+### Environment variables
 
-| Инструмент | Роль | Что сделал |
-|---|---|---|
-| GPT-5.6 / Codex | Бэкенд | T-002–T-013 и инфра: auth, сессии, очереди, ETA/EMA, freeze/reorder/lock, done/skip, отчёты, realtime, Telegram, демо-генератор |
-| Muse Spark (free) | Фронт, дизайн, доки | Экраны T-009/T-010, Material You-тема, README и доки |
-| Анализатор Muse | Аудит, досье | Обзор кода (`docs/TECH_STACK_REVIEW.md` и др.), кода не писал |
+`VAR=x` без `export` не уходит в дочерний процесс. Проверка:
+`docker compose config | grep VAR`.
 
-Проверено вручную (только то, что реально гонялось — см. отчёты):
+### CORS
 
-- Локальный стенд одной командой: `compose up`, health Postgres/Redis, smoke API/фронта/WebSocket (CI и отчёты T-014).
-- Демо дважды через настоящий backend + ручные API/Redis-прогоны: 6/6 контрольных строк, 13 realtime-событий, 29 fake Telegram-сообщений, 0 внешних запросов (отчёт T-013).
-- Бот без токена остаётся `Up`, опрос Telegram безопасно отключён (отчёт T-012).
-- Боевой деплой 07.09 по файлу граблей: `curl /health` снаружи, выпуск Let's Encrypt, HTTPS-оверлей, setWebhook, проверка доступности Telegram API, дымовой прогон с мобильного интернета.
+CORS 400 на OPTIONS — дефолт разрешает только localhost. Задать `CORS_ORIGINS` +
+`VITE_API_BASE_URL` и пересобрать фронт (Vite вшивает адрес в build).
+Без суффикса `/api` — 404 на все запросы: `VITE_API_BASE_URL=https://<домен>/api`.
 
-## Troubleshooting (Windows PC → домен)
+### HTTPS / DNS
 
-Боевой опыт деплоя, сжато: симптом → причина → лечение.
+Серт не выпускается: `.sh` запускать в Git Bash, сначала `curl http://<домен>/health`
+снаружи, `DOMAIN` — FQDN с точкой, на вопрос EFF — N. 502 от nginx: подъём с оверлеем
++ `--force-recreate nginx`. Снаружи: только inbound 80/443, проброс на IP этого PC,
+белый IP = резолв `nslookup`. DNS: `A` на IP, TTL 300, Cloudflare только DNS-only.
 
-| Симптом | Причина | Лечение |
-|---|---|---|
-| `Bind 0.0.0.0:8000` | Старый стенд не погашен или хвост Docker держит проброс | `docker compose down`; висящих найти (`lsof -i :PORT`, `docker ps -a`) и снести; либо соседние порты. Переменные — в одной строке с командой или через `export` |
-| Env не применился | `VAR=x` без `export` не уходит в дочерний процесс | `export VAR=...` заранее или префикс в той же строке. Проверка: `docker compose config \| grep VAR` |
-| CORS 400 на OPTIONS | Дефолт разрешает только localhost | Задать `CORS_ORIGINS` + `VITE_API_BASE_URL` и пересобрать фронт (Vite вшивает адрес в build) |
-| Фронт бьёт в дефолт | Нужные строки закомментированы | Раскомментировать 2 строки под домен, LAN-пример не трогать |
-| 404 на все запросы API | nginx отдаёт API под `/api` | `VITE_API_BASE_URL=https://<домен>/api` — с суффиксом |
-| Backend падает на старте | Пароль в `POSTGRES_PASSWORD` и `DB_URL` различаются; пустой `JWT_SECRET` | Синхронизировать пароли; задать секрет. Ручной INSERT в `groups` — с `gen_random_uuid()` |
-| Нечего выбрать при регистрации | Создания групп через API нет by design | Seed: `INSERT` групп + `RETURNING id` |
-| Серт не выпускается | `.sh` в PowerShell молча не выполняется; нет доступа снаружи; `DOMAIN` не FQDN | Только Git Bash (или ручные docker-команды); сначала `curl http://<домен>/health` снаружи; `DOMAIN` с точкой; на вопрос EFF — N |
-| 502 от nginx | Стартовал до серта и не пересоздавался | Подъём с оверлеем + `--force-recreate nginx` после выпуска; plain `up` без оверлея убивает https |
-| Нет доступа снаружи | Firewall / роутер / CGNAT | Только inbound 80/443; проброс на IP этого PC (статический lease); белый IP = резолв `nslookup` |
-| `curl` с двумя `-d` падает | В PowerShell `curl` — алиас | `curl.exe`; вместо `tail` — `--tail` |
-| Telegram недоступен с сервера | `api.telegram.org` без egress | VPN на хосте + split tunneling только `api.telegram.org`. Проверка: `curl.exe https://api.telegram.org --max-time 10` |
-| Webhook не встаёт | Перепутаны 3 секрета | `BOT_TOKEN` от BotFather, `WEBHOOK_SECRET` свой рандом, `JWT_SECRET` свой hex |
-| Dev-фронт режет чужой Host | Фильтр Vite | `allowedHosts` в `vite.config` (уже в коде) |
-| Падает CI | Lock рассинхрон; rollup linux-optional | `npm install` (в контейнере, если нет node), lock не удалять |
-| DNS | — | `A` на IP, TTL 300; Cloudflare только DNS-only |
+### Telegram
+
+С сервера недоступен `api.telegram.org` — нужен egress (VPN на хосте + split tunneling).
+Проверка: `curl.exe https://api.telegram.org --max-time 10`. Webhook не встаёт —
+не перепутать 3 секрета: `BOT_TOKEN`, `WEBHOOK_SECRET`, `JWT_SECRET`.
+В PowerShell `curl` — алиас, использовать `curl.exe`.
+
+### Database / migrations
+
+Backend падает на старте: пароль в `POSTGRES_PASSWORD` и `DB_URL` различаются,
+пустой `JWT_SECRET`. Группы при регистрации: создания через API нет by design —
+seed через `INSERT` + `RETURNING id`.
+
+### Realtime
+
+Нет живых обновлений: проверить WS `ws://<хост>/ws/sessions/<id>` и события Redis
+`session:{id}`; при обрыве клиент опрашивает API каждые 5 секунд — рассинхрон
+закрывается сам, страница не нужна в перезагрузке.
 
 Золотое правило — по шагам, не прыгать: HTTP снаружи → серт → HTTPS → webhook → дым с LTE.
 
@@ -275,3 +496,69 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
   -d secret_token=<TELEGRAM_WEBHOOK_SECRET>                 # 4. webhook
 # 5. дымовой прогон сценария и фронта с мобильного интернета
 ```
+
+## Beyond Exams
+
+> Smart Queue — это не только очередь на экзамен.
+> Это универсальный механизм управления потоком людей и временем ожидания.
+
+Механизм (сессия → очередь → ETA → вызов) не привязан к экзаменам.
+Потенциальные направления (roadmap, не реализовано):
+
+- лабораторные работы;
+- деканат;
+- студенческий офис;
+- получение документов;
+- консультации;
+- другие университетские сервисы с потоком посетителей.
+
+## Roadmap
+
+### Возможный следующий этап инфраструктуры
+
+- Несколько backend replicas.
+- Отдельный migration job.
+- Централизованные логи.
+- Metrics.
+- Rate limiting.
+- Более зрелая production auth.
+- Backup/restore automation.
+- Load balancing.
+
+> Docker Compose подходит для текущего MVP; при существенном росте нагрузки
+> архитектуру можно горизонтально масштабировать.
+
+## Project Structure
+
+```text
+backend/    — backend/API/business logic (FastAPI)
+frontend/   — React frontend (Vite)
+bot/        — Telegram worker
+tests/      — backend tests
+scripts/    — deployment/demo scripts
+docs/       — documentation
+nginx/      — reverse proxy configuration
+```
+
+## Team
+
+- Арсений — DevOps / infrastructure: Docker / Compose, deployment,
+  NGINX, HTTPS, CI, health checks, recovery/diagnostics.
+
+## Known Limitations
+
+MVP-ограничения, подтверждённые кодом:
+
+- Регистрация преподавателя открыта всем — нужно усиление.
+- Refresh token rotation не реализован (токен многоразовый до истечения).
+- WebSocket принимает токен в query-параметре — credentials можно сделать безопаснее.
+- Токены фронта хранятся в localStorage/sessionStorage — хранение можно усилить.
+- Redis Pub/Sub — шина событий без durable log: пропущенное событие закрывается polling-фallback.
+
+## Документы
+
+- `PRODUCT.md` — продукт и границы MVP.
+- `docs/TECH_SPEC.md` — полная техническая спецификация.
+- `PLAN.md` — этапы.
+- `TASKS.md` — декомпозиция (T-001–T-014, все DONE).
+- `docs/` — обзоры и отчёты исполнителей (`docs/agent/tasks/<ID>/`).
