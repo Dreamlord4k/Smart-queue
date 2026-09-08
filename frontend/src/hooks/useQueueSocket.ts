@@ -7,15 +7,17 @@ export function useQueueSocket(options: {
   accessToken: string;
   apiBaseUrl?: string;
   onUpdate: () => Promise<void> | void;
+  enabled?: boolean;
 }): void {
-  const { sessionId, accessToken, apiBaseUrl, onUpdate } = options;
+  const { sessionId, accessToken, apiBaseUrl, onUpdate, enabled = true } = options;
 
   useEffect(() => {
+    if (!enabled) return;
     const connection = new QueueConnection({
       url: queueSocketUrl(sessionId, accessToken, apiBaseUrl),
       onUpdate,
     });
     connection.start();
     return () => connection.stop();
-  }, [accessToken, apiBaseUrl, onUpdate, sessionId]);
+  }, [accessToken, apiBaseUrl, enabled, onUpdate, sessionId]);
 }

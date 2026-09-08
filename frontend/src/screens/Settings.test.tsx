@@ -19,4 +19,12 @@ describe("Settings", () => {
     expect(html).not.toContain("Удалить мой профиль");
     expect(html).not.toContain("Удалить профиль навсегда");
   });
+
+  it("предупреждает преподавателя об удалении его сессий, но не студентов", () => {
+    const html = renderToStaticMarkup(<Settings accessToken="token" role="teacher" />);
+
+    expect(html).toContain("созданные вами сессии и их очереди");
+    expect(html).toContain("Аккаунты студентов сохранятся");
+    expect(html).toContain("Удалить профиль навсегда");
+  });
 });

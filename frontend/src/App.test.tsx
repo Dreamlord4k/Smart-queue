@@ -36,6 +36,16 @@ describe("App", () => {
 
     expect(html).toContain("Мои сессии");
     expect(html).toContain("Новая сессия");
+    expect(html).toContain("Настройки");
+  });
+
+  it("преподавателю доступно удаление профиля в общих настройках", () => {
+    const html = renderToStaticMarkup(
+      <App initialRoute="/settings" readToken={() => fakeJwt("teacher")} />,
+    );
+
+    expect(html).toContain("Удалить мой профиль");
+    expect(html).toContain("созданные вами сессии и их очереди");
   });
 
   it("студент с токеном попадает в свои очереди", () => {

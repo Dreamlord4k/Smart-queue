@@ -7,6 +7,7 @@ import {
 } from "../api/student";
 import { ThemeToggle } from "../components/ThemeToggle";
 import "../components/student/Student.css";
+import type { UserRole } from "../auth/session";
 
 interface SettingsProps {
   accessToken: string;
@@ -15,6 +16,7 @@ interface SettingsProps {
   onBack?: () => void;
   onDeleted?: () => void;
   demoMode?: boolean;
+  role?: UserRole;
 }
 
 export function Settings({
@@ -24,6 +26,7 @@ export function Settings({
   onBack,
   onDeleted,
   demoMode = false,
+  role = "student",
 }: SettingsProps) {
   const api = useMemo(
     () => suppliedApi ?? createStudentApi(accessToken, apiBaseUrl),
@@ -107,10 +110,17 @@ export function Settings({
         </section>
         {!demoMode && <section className="student-panel" aria-label="Удаление профиля">
           <h2>Удалить мой профиль</h2>
-          <p>
-            Аккаунт и связанные с ним записи будут удалены без возможности восстановления.
-            Данные других участников не изменятся.
-          </p>
+          {role === "teacher" ? (
+            <p>
+              Аккаунт, созданные вами сессии и их очереди будут удалены без возможности
+              восстановления. Аккаунты студентов сохранятся.
+            </p>
+          ) : (
+            <p>
+              Аккаунт и связанные с ним записи будут удалены без возможности восстановления.
+              Данные других участников не изменятся.
+            </p>
+          )}
           <label className="student-field">
             <span>
               <input

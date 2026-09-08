@@ -140,6 +140,7 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
     (route === "/queues" || route === "/queue" || route === "/settings" || route.startsWith("/teacher"))
       ? "/login"
       : route;
+  const currentRole = token ? decodeRoleFromToken(token) : null;
 
   // Шапки-навигации нет: переключение Вход/Регистрация живёт
   // сегментом внутри карточки, остальные экраны — без дублей.
@@ -183,7 +184,14 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
           key={demoRevision}
           accessToken={token}
           demoMode={demoSession}
-          onBack={() => setRoute(selectedQueueId ? "/queue" : "/queues")}
+          role={currentRole ?? "student"}
+          onBack={() => setRoute(
+            currentRole === "teacher"
+              ? "/teacher"
+              : selectedQueueId
+                ? "/queue"
+                : "/queues",
+          )}
           onDeleted={() => {
             setToken(null);
             setDemoSession(false);
@@ -195,6 +203,7 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
         <TeacherDashboard
           key={demoRevision}
           accessToken={token}
+          onSettings={() => setRoute("/settings")}
           onOpenSession={(session) => {
             setSelectedSession(session);
             setRoute("/teacher/session");
@@ -213,6 +222,7 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
         <TeacherDashboard
           key={demoRevision}
           accessToken={token}
+          onSettings={() => setRoute("/settings")}
           onOpenSession={setSelectedSession}
         />
       )}
