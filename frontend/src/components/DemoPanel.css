@@ -43,6 +43,33 @@
   gap: 8px;
 }
 
+.demo-panel--session {
+  position: static;
+  left: auto;
+  bottom: auto;
+  z-index: auto;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  align-items: center;
+  width: min(1040px, calc(100% - 32px));
+  max-height: none;
+  margin: 24px auto 16px;
+  overflow: visible;
+}
+
+.demo-panel--session .demo-panel__roles {
+  grid-template-columns: repeat(2, minmax(136px, 1fr));
+}
+
+.demo-panel__intro {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.demo-panel--session .demo-panel__message {
+  grid-column: 1 / -1;
+}
+
 .demo-panel button:focus-visible {
   outline: 3px solid var(--color-on-surface);
   outline-offset: 2px;
@@ -71,9 +98,24 @@
     display: none;
   }
 
-  .app-root--demo .student-page,
-  .app-root--demo .teacher-page,
-  .app-root--demo .mq-page {
-    padding-bottom: 250px;
+  .demo-panel--session {
+    left: auto;
+    bottom: auto;
+    grid-template-columns: 1fr;
+    width: calc(100% - 24px);
+    max-height: none;
+    margin: 20px auto 12px;
+    padding: 14px;
+    overflow: visible;
+  }
+
+  .demo-panel--session .demo-panel__roles {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .demo-panel--session .demo-panel__roles {
+    grid-template-columns: 1fr;
   }
 }

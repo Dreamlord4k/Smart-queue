@@ -27,6 +27,7 @@ describe("DemoPanel", () => {
 
     expect(guest).toContain("Демо-препод");
     expect(guest).toContain("Демо-студент");
+    expect(guest).not.toContain("demo-panel--session");
     expect(authorized).toBe("");
   });
 
@@ -44,6 +45,7 @@ describe("DemoPanel", () => {
     expect(html).toContain("Демо-препод");
     expect(html).toContain("Демо-студент");
     expect(html).toContain("Переключить демо-роль");
+    expect(html).toContain("demo-panel--session");
   });
 
   it("объясняет, как восстановить отсутствующий seed", () => {

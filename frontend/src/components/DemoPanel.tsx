@@ -149,8 +149,10 @@ export function DemoPanel({
         className="demo-panel demo-panel--session"
         aria-label="Демонстрационный режим"
       >
-        <strong>Демо-режим</strong>
-        <p>Переключайте роль без выхода. Сброс — через 30 минут бездействия.</p>
+        <div className="demo-panel__intro">
+          <strong>Демо-режим</strong>
+          <p>Переключайте роль без выхода. Сброс — через 30 минут бездействия.</p>
+        </div>
         <div className="demo-panel__roles" aria-label="Переключить демо-роль">
           <button disabled={pending} type="button" onClick={() => void signIn("teacher")}>
             Демо-препод
