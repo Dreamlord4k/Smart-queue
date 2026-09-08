@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import { ACCESS_TOKEN_KEY, type TokenStorage } from "./auth/session";
 import { activateDemoRole, App } from "./App";
 
-function fakeJwt(role: string): string {
-  const payload = btoa(JSON.stringify({ sub: "user-id", role }))
+function fakeJwt(role: string, demo = false): string {
+  const payload = btoa(JSON.stringify({ sub: "user-id", role, demo }))
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
@@ -93,5 +93,19 @@ describe("App", () => {
     expect(teacher.route).toBe("/teacher");
     expect(student.route).toBe("/queues");
     expect(storage.getItem(ACCESS_TOKEN_KEY)).toBe("student-token");
+  });
+
+  it("рендерит управление demo после содержимого авторизованной страницы", () => {
+    const html = renderToStaticMarkup(
+      <App
+        initialRoute="/teacher"
+        readToken={() => fakeJwt("teacher", true)}
+      />,
+    );
+
+    expect(html.indexOf("teacher-page")).toBeGreaterThanOrEqual(0);
+    expect(html.indexOf("demo-panel--session")).toBeGreaterThan(
+      html.indexOf("teacher-page"),
+    );
   });
 });

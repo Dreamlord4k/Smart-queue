@@ -145,12 +145,6 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
   // сегментом внутри карточки, остальные экраны — без дублей.
   return (
     <div className={`app-root${demoSession ? " app-root--demo" : ""}`}>
-      <DemoPanel
-        accessToken={token}
-        demoSession={demoSession}
-        onLogin={handleDemoLogin}
-        onReset={handleDemoReset}
-      />
       {visible === "/login" && <Login onSuccess={handleLoginSuccess} />}
       {visible === "/register" && <Register onSuccess={() => setRoute("/login")} />}
       {visible === "/queues" && token && (
@@ -222,6 +216,12 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
           onOpenSession={setSelectedSession}
         />
       )}
+      <DemoPanel
+        accessToken={token}
+        demoSession={demoSession}
+        onLogin={handleDemoLogin}
+        onReset={handleDemoReset}
+      />
     </div>
   );
 }
