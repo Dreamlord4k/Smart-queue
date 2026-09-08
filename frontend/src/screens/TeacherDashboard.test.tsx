@@ -50,6 +50,7 @@ describe("TeacherDashboard", () => {
     expect(splitSessions(sessions).active[0].course_name).toBe("Базы данных");
     expect(html).toContain("Алгоритмы");
     expect(html).toContain("Сети");
+    expect(html).toContain("Настройки");
   });
 
   it("форма предлагает группы и отдельных студентов без RSVP", () => {

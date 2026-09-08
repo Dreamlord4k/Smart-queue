@@ -120,3 +120,25 @@ def test_delete_me_removes_account_and_invalidates_refresh(
     assert client.post(
         "/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
     ).status_code == 401
+
+
+def test_teacher_can_delete_own_account(client: TestClient) -> None:
+    email = "teacher-delete@example.com"
+    password = "another correct password"
+    assert client.post(
+        "/auth/register",
+        json={
+            "email": email,
+            "full_name": "Преподаватель",
+            "password": password,
+            "role": "teacher",
+        },
+    ).status_code == 201
+    tokens = login(client, email, password).json()
+
+    response = client.delete(
+        "/auth/me", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+    )
+
+    assert response.status_code == 204
+    assert login(client, email, password).status_code == 401

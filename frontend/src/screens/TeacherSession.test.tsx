@@ -145,6 +145,21 @@ describe("TeacherSession", () => {
     expect(html).not.toContain("Заморозить список");
   });
 
+  it("после завершения не показывает живой таймер и действия приёма", () => {
+    const html = renderToStaticMarkup(
+      <TeacherSession
+        accessToken="token"
+        session={{ ...session, status: "closed" }}
+        initialQueue={queue}
+      />,
+    );
+
+    expect(html).toContain("Приём завершён, таймер остановлен");
+    expect(html).not.toContain('role="timer"');
+    expect(html).not.toContain(">Готово<");
+    expect(html).not.toContain(">Пропустить<");
+  });
+
   it("не дублирует завершение отменой после начала приёма", () => {
     const active = renderToStaticMarkup(
       <TeacherSession accessToken="token" session={session} initialQueue={queue} />,

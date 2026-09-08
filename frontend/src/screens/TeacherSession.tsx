@@ -133,6 +133,7 @@ export function TeacherSession({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const sessionIsTerminal = session.status === "closed" || session.status === "cancelled";
 
   const loadQueue = useCallback(async () => {
     setQueue(await api.getQueue(session.id));
@@ -150,6 +151,7 @@ export function TeacherSession({
     accessToken,
     apiBaseUrl,
     onUpdate: loadQueue,
+    enabled: !sessionIsTerminal,
   });
 
   useEffect(() => {
@@ -235,7 +237,7 @@ export function TeacherSession({
   const history = entries.filter((entry) =>
     ["done", "skipped", "absent"].includes(entry.status),
   );
-  const canChangeOrder = !["closed", "cancelled"].includes(session.status);
+  const canChangeOrder = !sessionIsTerminal;
 
   return (
     <main className="teacher-page">
@@ -294,7 +296,7 @@ export function TeacherSession({
               <button className="teacher-button teacher-button--danger" disabled={pending} onClick={() => changeStatus("cancelled")}>Отменить</button>
             )}
           </div>
-          {session.status !== "closed" && session.status !== "cancelled" && (
+          {!sessionIsTerminal && (
             <form className="teacher-control" onSubmit={changeDuration}>
               <label>
                 <span>Минут на студента</span>
@@ -322,16 +324,20 @@ export function TeacherSession({
                         <span>Фиксация: {current.locked ? "да" : "нет"}</span>
                         {current.lock_reason && <span>Причина фиксации: {current.lock_reason}</span>}
                       </div>
-                      {current.called_at && (
+                      {current.called_at && !sessionIsTerminal && (
                         <ReceptionTimer
                           calledAt={current.called_at}
                           durationMinutes={session.duration_default}
                         />
                       )}
-                      <div className="teacher-actions teacher-channel-actions">
-                        <button className="teacher-button teacher-button--primary" disabled={pending} onClick={() => queueAction(() => api.finishEntry(session.id, current.id), `Готово: ${current.student_name}`)}>Готово</button>
-                        <button className="teacher-button" disabled={pending} onClick={() => queueAction(() => api.skipEntry(session.id, current.id), `Пропущен: ${current.student_name}`)}>Пропустить</button>
-                      </div>
+                      {sessionIsTerminal ? (
+                        <p className="teacher-muted">Приём завершён, таймер остановлен.</p>
+                      ) : (
+                        <div className="teacher-actions teacher-channel-actions">
+                          <button className="teacher-button teacher-button--primary" disabled={pending} onClick={() => queueAction(() => api.finishEntry(session.id, current.id), `Готово: ${current.student_name}`)}>Готово</button>
+                          <button className="teacher-button" disabled={pending} onClick={() => queueAction(() => api.skipEntry(session.id, current.id), `Пропущен: ${current.student_name}`)}>Пропустить</button>
+                        </div>
+                      )}
                     </>
                   )}
                 </article>
@@ -365,7 +371,7 @@ export function TeacherSession({
           </ul>
         </section>
 
-        {session.status !== "closed" && session.status !== "cancelled" && (
+        {!sessionIsTerminal && (
           <section className="teacher-panel">
             <h2>Добавить участника</h2>
             <form className="teacher-control teacher-actions" onSubmit={addParticipant}>

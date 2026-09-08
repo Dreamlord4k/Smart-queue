@@ -18,6 +18,7 @@ interface TeacherDashboardProps {
   initialSessions?: SessionSummary[];
   initialGroups?: GroupWithStudents[];
   onOpenSession?: (session: SessionSummary) => void;
+  onSettings?: () => void;
 }
 
 export function splitSessions(sessions: SessionSummary[]) {
@@ -69,6 +70,7 @@ export function TeacherDashboard({
   initialSessions,
   initialGroups,
   onOpenSession,
+  onSettings,
 }: TeacherDashboardProps) {
   const api = useMemo(
     () => suppliedApi ?? createTeacherApi(accessToken, apiBaseUrl),
@@ -130,6 +132,9 @@ export function TeacherDashboard({
           </div>
           <div className="teacher-actions">
             <ThemeToggle />
+            <button className="teacher-button" type="button" onClick={onSettings}>
+              Настройки
+            </button>
             <button
               className="teacher-button teacher-button--primary"
               type="button"
