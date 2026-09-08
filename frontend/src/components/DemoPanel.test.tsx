@@ -30,7 +30,7 @@ describe("DemoPanel", () => {
     expect(authorized).toBe("");
   });
 
-  it("оставляет в авторизованной demo-сессии индикатор и сброс", () => {
+  it("оставляет в авторизованной demo-сессии обе роли и сброс", () => {
     const html = renderToStaticMarkup(
       <DemoPanel
         accessToken="demo-token"
@@ -41,8 +41,9 @@ describe("DemoPanel", () => {
 
     expect(html).toContain("Демо-режим");
     expect(html).toContain("Сбросить демо");
-    expect(html).not.toContain("Демо-препод");
-    expect(html).not.toContain("Демо-студент");
+    expect(html).toContain("Демо-препод");
+    expect(html).toContain("Демо-студент");
+    expect(html).toContain("Переключить демо-роль");
   });
 
   it("объясняет, как восстановить отсутствующий seed", () => {

@@ -292,7 +292,7 @@ export function Queue({
   }
 
   function markAbsent() {
-    if (!ownEntry) return;
+    if (!ownEntry || !absenceReason.trim()) return;
     void run(async () => {
       const result = await api.markAbsent(ownEntry.id, absenceReason);
       setAbsenceReason(result.absence_reason ?? "");
@@ -482,17 +482,23 @@ export function Queue({
                       </form>
 
                       <div className="student-field">
-                        <span>Не смогу участвовать</span>
+                        <label htmlFor="absence-reason">Не смогу участвовать</label>
                         <textarea
+                          id="absence-reason"
                           className="student-textarea"
                           value={absenceReason}
                           onChange={(event) => setAbsenceReason(event.target.value)}
-                          placeholder="Причина отказа — необязательно"
+                          placeholder="Кратко укажите причину отказа"
+                          aria-describedby="absence-reason-hint"
+                          required
                         />
+                        <span id="absence-reason-hint" className="student-field__hint">
+                          Причина обязательна и будет видна преподавателю.
+                        </span>
                         <button
                           className="student-button student-button--danger"
                           type="button"
-                          disabled={pending}
+                          disabled={pending || !absenceReason.trim()}
                           onClick={markAbsent}
                         >
                           Отказаться от этой сессии

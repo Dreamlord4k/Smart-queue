@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { App } from "./App";
+import { ACCESS_TOKEN_KEY, type TokenStorage } from "./auth/session";
+import { activateDemoRole, App } from "./App";
 
 function fakeJwt(role: string): string {
   const payload = btoa(JSON.stringify({ sub: "user-id", role }))
@@ -68,5 +69,29 @@ describe("App", () => {
     expect(loginHtml).not.toContain("<nav");
     expect(registerHtml).not.toContain("<nav");
     expect(registerHtml).toContain("auth-tabs");
+  });
+
+  it("переключает demo-преподавателя на кабинет студента с заменой токена", () => {
+    const values = new Map<string, string>();
+    const storage: TokenStorage = {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+      removeItem: (key) => values.delete(key),
+    };
+
+    const teacher = activateDemoRole(
+      { access_token: "teacher-token", refresh_token: "teacher-refresh" },
+      "teacher",
+      storage,
+    );
+    const student = activateDemoRole(
+      { access_token: "student-token", refresh_token: "student-refresh" },
+      "student",
+      storage,
+    );
+
+    expect(teacher.route).toBe("/teacher");
+    expect(student.route).toBe("/queues");
+    expect(storage.getItem(ACCESS_TOKEN_KEY)).toBe("student-token");
   });
 });

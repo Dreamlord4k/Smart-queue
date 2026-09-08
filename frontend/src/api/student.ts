@@ -29,7 +29,7 @@ export interface StudentApi {
     locked: boolean,
     lockReason?: string,
   ): Promise<LockResult>;
-  markAbsent(entryId: string, absenceReason?: string): Promise<AbsenceResult>;
+  markAbsent(entryId: string, absenceReason: string): Promise<AbsenceResult>;
   initTelegramLink(): Promise<TelegramLinkState>;
   deleteProfile(): Promise<void>;
 }
@@ -103,7 +103,7 @@ export function createStudentApi(
     markAbsent: (entryId, absenceReason) =>
       request("student.markAbsent", `/students/me/queues/${entryId}/absence`, {
         method: "POST",
-        body: JSON.stringify({ absence_reason: absenceReason?.trim() || null }),
+        body: JSON.stringify({ absence_reason: absenceReason.trim() }),
       }),
     initTelegramLink: () =>
       request("student.initTelegramLink", "/telegram/link/init", { method: "POST" }),

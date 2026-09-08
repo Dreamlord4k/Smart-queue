@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 
 import type { TokenPair, UserRole } from "../auth/session";
+import {
+  DEMO_IDLE_TIMEOUT_MS,
+  signalDemoReset,
+  startDemoActivityMonitor,
+} from "../demo/activity";
 import "./DemoPanel.css";
 
 type FetchImpl = typeof fetch;
 type DemoAvailability = "checking" | "disabled" | "available" | "missing";
 
-export const DEMO_RESET_INTERVAL_MS = 30 * 60 * 1000;
+export const DEMO_RESET_INTERVAL_MS = DEMO_IDLE_TIMEOUT_MS;
 
 function apiBaseUrl(explicit?: string): string {
   return explicit ?? (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
@@ -98,7 +103,8 @@ export function DemoPanel({
     setMessage(null);
     try {
       await resetDemo(accessToken, { apiBaseUrl: explicitApiBaseUrl });
-      setMessage(automatic ? "Демо автоматически восстановлено" : "Демо восстановлено");
+      if (typeof window !== "undefined") signalDemoReset(window.localStorage);
+      setMessage(automatic ? "Демо автоматически сброшено после 30 минут бездействия" : "Демо сброшено");
       onReset?.();
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : "Не удалось сбросить демо");
@@ -108,12 +114,16 @@ export function DemoPanel({
   }, [accessToken, demoSession, explicitApiBaseUrl, onReset]);
 
   useEffect(() => {
-    if (!demoSession || !accessToken) return;
-    const timer = window.setInterval(
-      () => void handleReset(true),
-      DEMO_RESET_INTERVAL_MS,
-    );
-    return () => window.clearInterval(timer);
+    if (!demoSession || !accessToken || typeof window === "undefined") return;
+    return startDemoActivityMonitor({
+      target: window,
+      storage: window.localStorage,
+      onIdle: () => void handleReset(true),
+      onExternalReset: () => {
+        setMessage("Демо автоматически сброшено в другой вкладке");
+        onReset?.();
+      },
+    });
   }, [accessToken, demoSession, handleReset]);
 
   async function signIn(role: UserRole) {
@@ -140,7 +150,15 @@ export function DemoPanel({
         aria-label="Демонстрационный режим"
       >
         <strong>Демо-режим</strong>
-        <p>Данные автоматически сбрасываются каждые 30 минут.</p>
+        <p>Переключайте роль без выхода. Сброс — через 30 минут бездействия.</p>
+        <div className="demo-panel__roles" aria-label="Переключить демо-роль">
+          <button disabled={pending} type="button" onClick={() => void signIn("teacher")}>
+            Демо-препод
+          </button>
+          <button disabled={pending} type="button" onClick={() => void signIn("student")}>
+            Демо-студент
+          </button>
+        </div>
         <button
           className="demo-panel__reset"
           disabled={pending}
@@ -170,12 +188,14 @@ export function DemoPanel({
           <p className="demo-panel__hint">
             Откройте роли в разных вкладках — изменения будут видны вживую.
           </p>
-          <button disabled={pending} type="button" onClick={() => void signIn("teacher")}>
-            Демо-препод
-          </button>
-          <button disabled={pending} type="button" onClick={() => void signIn("student")}>
-            Демо-студент
-          </button>
+          <div className="demo-panel__roles" aria-label="Выбрать демо-роль">
+            <button disabled={pending} type="button" onClick={() => void signIn("teacher")}>
+              Демо-препод
+            </button>
+            <button disabled={pending} type="button" onClick={() => void signIn("student")}>
+              Демо-студент
+            </button>
+          </div>
         </>
       )}
       {message && <p className="demo-panel__message" role="status">{message}</p>}
