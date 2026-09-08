@@ -34,15 +34,15 @@ class QueuePlacement(str, Enum):
 
 
 class AbsenceRequest(BaseModel):
-    absence_reason: str | None = Field(default=None, max_length=2000)
+    absence_reason: str = Field(min_length=1, max_length=2000)
 
     @field_validator("absence_reason")
     @classmethod
-    def normalize_optional_reason(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
+    def normalize_required_reason(cls, value: str) -> str:
         normalized = value.strip()
-        return normalized or None
+        if not normalized:
+            raise ValueError("Укажите причину отказа")
+        return normalized
 
 
 class ReorderRequest(BaseModel):

@@ -3,10 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import {
   browserDemoTokenStorage,
   browserTokenStorage,
+  clearTokens,
   decodeDemoFromToken,
   decodeRoleFromToken,
   refreshStoredAccessToken,
   saveTokens,
+  type TokenStorage,
   type TokenPair,
   type UserRole,
 } from "./auth/session";
@@ -34,8 +36,17 @@ function readStoredToken(): string | null {
   return browserTokenStorage()?.getItem("access_token") ?? null;
 }
 
-function routeForRole(role: UserRole): AppRoute {
+export function routeForRole(role: UserRole): AppRoute {
   return role === "teacher" ? "/teacher" : "/queues";
+}
+
+export function activateDemoRole(
+  pair: TokenPair,
+  role: UserRole,
+  storage: TokenStorage | null,
+): { token: string; route: AppRoute } {
+  if (storage) saveTokens(storage, pair);
+  return { token: pair.access_token, route: routeForRole(role) };
 }
 
 interface AppProps {
@@ -70,16 +81,23 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
 
   function handleDemoLogin(pair: TokenPair, role: UserRole) {
     const storage = browserDemoTokenStorage();
-    if (storage) saveTokens(storage, pair);
-    setToken(pair.access_token);
+    const next = activateDemoRole(pair, role, storage);
+    setToken(next.token);
     setDemoSession(true);
     setSelectedQueueId(null);
     setSelectedSession(null);
-    setRoute(routeForRole(role));
+    setRoute(next.route);
   }
 
   const handleDemoReset = useCallback(() => {
+    const storage = browserDemoTokenStorage();
+    if (storage) clearTokens(storage);
+    setToken(null);
+    setDemoSession(false);
     setDemoRevision((value) => value + 1);
+    setSelectedQueueId(null);
+    setSelectedSession(null);
+    setRoute("/login");
   }, []);
 
   useEffect(() => {
@@ -126,7 +144,7 @@ export function App({ initialRoute, readToken = readStoredToken }: AppProps) {
   // Шапки-навигации нет: переключение Вход/Регистрация живёт
   // сегментом внутри карточки, остальные экраны — без дублей.
   return (
-    <div className="app-root">
+    <div className={`app-root${demoSession ? " app-root--demo" : ""}`}>
       <DemoPanel
         accessToken={token}
         demoSession={demoSession}

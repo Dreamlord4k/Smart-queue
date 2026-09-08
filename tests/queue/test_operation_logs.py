@@ -118,7 +118,7 @@ def test_absence_logs_operation_and_keeps_result(
         response = client.post(
             f"/students/me/queues/{entries[1].id}/absence",
             headers=authorization(leaving),
-            json={},
+            json={"absence_reason": "Другая встреча"},
         )
 
     assert response.status_code == 200

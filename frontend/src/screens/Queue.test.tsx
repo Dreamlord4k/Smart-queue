@@ -149,7 +149,10 @@ describe("Queue", () => {
 
     expect(html).toContain("В начало");
     expect(html).not.toContain("Например, пересечение с другой парой");
-    expect(html).toContain("Причина отказа — необязательно");
+    expect(html).toContain("Причина обязательна и будет видна преподавателю");
+    expect(html).toContain('id="absence-reason"');
+    expect(html).toContain("required");
+    expect(html).toMatch(/student-button student-button--danger[^>]*disabled/);
     expect(html).toContain("Сохранить фиксацию");
     expect(html).toContain("Отказаться от этой сессии");
     expect(html).toContain("Примерно:");

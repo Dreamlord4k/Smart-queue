@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, time
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -121,10 +122,32 @@ def test_absence_can_only_change_own_entry(client: TestClient) -> None:
     response = client.post(
         f"/students/me/queues/{entries[0].id}/absence",
         headers=authorization(stranger),
-        json={},
+        json={"absence_reason": "Другая встреча"},
     )
 
     assert response.status_code == 403
+    with SessionLocal() as db:
+        assert db.get(QueueEntry, entries[0].id).status == QueueEntryStatus.WAITING
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{}, {"absence_reason": None}, {"absence_reason": ""}, {"absence_reason": "   "}],
+)
+def test_absence_requires_non_empty_reason(
+    client: TestClient, payload: dict[str, object]
+) -> None:
+    teacher = add_user("teacher@example.com", "Преподаватель", UserRole.TEACHER)
+    student = add_user("student@example.com", "Студент", UserRole.STUDENT)
+    _, entries = add_session(teacher, [student])
+
+    response = client.post(
+        f"/students/me/queues/{entries[0].id}/absence",
+        headers=authorization(student),
+        json=payload,
+    )
+
+    assert response.status_code == 422
     with SessionLocal() as db:
         assert db.get(QueueEntry, entries[0].id).status == QueueEntryStatus.WAITING
 
@@ -168,7 +191,7 @@ def test_absence_does_not_change_another_session(client: TestClient) -> None:
     response = client.post(
         f"/students/me/queues/{first_entries[0].id}/absence",
         headers=authorization(student),
-        json={},
+        json={"absence_reason": "Другая встреча"},
     )
 
     assert response.status_code == 200
