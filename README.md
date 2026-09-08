@@ -540,11 +540,6 @@ docs/       — documentation
 nginx/      — reverse proxy configuration
 ```
 
-## Team
-
-- Арсений — DevOps / infrastructure: Docker / Compose, deployment,
-  NGINX, HTTPS, CI, health checks, recovery/diagnostics.
-
 ## Known Limitations
 
 MVP-ограничения, подтверждённые кодом:
